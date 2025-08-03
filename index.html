@@ -2,14 +2,14 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>正在導向表單...</title>
+  <title>Redirecting...</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
   <h3>🔄 正在為您載入表單...</h3>
   <script>
     async function main() {
-      await liff.init({ liffId: "2007867560-ElN1bVyv" });
+      await liff.init({ liffId: "2007867560-ElN1bVyv" }); // 替換為你的 LIFF ID
 
       if (!liff.isLoggedIn()) {
         liff.login();
@@ -18,18 +18,16 @@
 
       const userId = (await liff.getProfile()).userId;
 
-      // 🔍 查詢會員資料（來自您提供的 Library）
-      const res = await fetch(
-        `https://docs.google.com/forms/d/e/1FAIpQLSdz2vdeT-YnMk1YfhDxpgLwJKAOEjbby5po0pRfm1EBUwTpgw/viewform?usp=header`
-      );
+      // 呼叫 Google Apps Script 查會員資料
+      const res = await fetch(`https://script.google.com/macros/s/AKfycbx.../exec?userId=${userId}`);
       const userData = await res.json();
 
       if (!userData || !userData.success) {
-        document.body.innerHTML = "<h3>❌ 查無會員資料，請先完成註冊</h3>";
+        document.body.innerHTML = "<h3>❌ 查無會員資料，請先註冊</h3>";
         return;
       }
 
-      // 🧩 取得 target 表單網址參數
+      // 從網址取得目標 Google 表單
       const urlParams = new URLSearchParams(window.location.search);
       let target = urlParams.get("target");
 
@@ -38,14 +36,13 @@
         return;
       }
 
-      // 🔁 替換欄位資料（請依實際需要增加更多欄位）
+      // 替換欄位變數為會員資料
       target = target
         .replace('[[USER_ID]]', encodeURIComponent(userId))
         .replace('[[姓名]]', encodeURIComponent(userData.name))
         .replace('[[手機]]', encodeURIComponent(userData.phone))
         .replace('[[地址]]', encodeURIComponent(userData.address));
 
-      // ⏩ 跳轉到 Google 表單
       window.location.href = target;
     }
 
