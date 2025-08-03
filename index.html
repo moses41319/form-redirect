@@ -9,7 +9,7 @@
   <h3>🔄 正在為您載入表單...</h3>
   <script>
     async function main() {
-      await liff.init({ liffId: "2007867560-ElN1bVyv" }); // 替換為你的 LIFF ID
+      await liff.init({ liffId: "2007867560-ElN1bVyv" });
 
       if (!liff.isLoggedIn()) {
         liff.login();
@@ -18,7 +18,7 @@
 
       const userId = (await liff.getProfile()).userId;
 
-      // 呼叫 Google Apps Script 查會員資料
+      // 從 Google Apps Script 取得會員資料
       const res = await fetch(`https://script.google.com/macros/s/AKfycbx.../exec?userId=${userId}`);
       const userData = await res.json();
 
@@ -27,7 +27,7 @@
         return;
       }
 
-      // 從網址取得目標 Google 表單
+      // 讀取目標網址
       const urlParams = new URLSearchParams(window.location.search);
       let target = urlParams.get("target");
 
@@ -36,7 +36,7 @@
         return;
       }
 
-      // 替換欄位變數為會員資料
+      // 替換參數
       target = target
         .replace('[[USER_ID]]', encodeURIComponent(userId))
         .replace('[[姓名]]', encodeURIComponent(userData.name))
