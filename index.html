@@ -4,9 +4,13 @@
   <meta charset="UTF-8">
   <title>Redirecting...</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <h3>🔄 正在為您載入表單...</h3>
   <script>
     async function main() {
-      await liff.init({ liffId: "2007867560-dlxn7yaL" });
+      await liff.init({ liffId: "2007867560-ElN1bVyv" });
+
       if (!liff.isLoggedIn()) {
         liff.login();
         return;
@@ -14,22 +18,36 @@
 
       const userId = (await liff.getProfile()).userId;
 
-      // 讀取 URL 中的 target 參數
-      const urlParams = new URLSearchParams(window.location.search);
-      const target = urlParams.get("target");
+      // 從 LINE Bot 傳送取得會員資料 API
+      const res = await fetch(`https://script.google.com/macros/s/AKfycbx.../exec?userId=${userId}`);
+      const userData = await res.json();
 
-      if (target) {
-        const redirectUrl = target.replace('[[USER_ID]]', encodeURIComponent(userId));
-        window.location.href = redirectUrl;
-      } else {
-        document.body.innerHTML = "<h3>❌ 缺少 target 參數</h3>";
+      // 如果資料取得失敗
+      if (!userData || !userData.success) {
+        document.body.innerHTML = "<h3>❌ 查無會員資料，請先註冊</h3>";
+        return;
       }
+
+      // 組合跳轉網址
+      const urlParams = new URLSearchParams(window.location.search);
+      let target = urlParams.get("target");
+
+      if (!target) {
+        document.body.innerHTML = "<h3>❌ 缺少 target 參數</h3>";
+        return;
+      }
+
+      // 替換 [[欄位]] 標記為實際資料
+      target = target
+        .replace('[[USER_ID]]', encodeURIComponent(userId))
+        .replace('[[姓名]]', encodeURIComponent(userData.name))
+        .replace('[[手機]]', encodeURIComponent(userData.phone))
+        .replace('[[地址]]', encodeURIComponent(userData.address));
+
+      window.location.href = target;
     }
 
     main();
   </script>
-</head>
-<body>
-  <h3>🔄 正在為您載入表單...</h3>
 </body>
 </html>
