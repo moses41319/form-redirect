@@ -19,9 +19,8 @@
       const profile = await liff.getProfile();
       const userId = profile.userId;
 
-      // 🔗 改成你部署的 Apps Script 查詢 API 網址
-      const apiUrl = `https://script.google.com/macros/s/AKfycbx.../exec?userId=${userId}`;
-      const res = await fetch(apiUrl);
+      // ✅ 這裡換成你自己的 Apps Script 查詢網址
+      const res = await fetch(`https://script.google.com/macros/library/d/16OgfezeuTXkJqIGM57nUa0wj5Y7ygpxjCmuPaqQcMKWSJuoVGQFHTBI1/18/exec?userId=${userId}`);
       const userData = await res.json();
 
       if (!userData.success) {
@@ -37,7 +36,7 @@
         return;
       }
 
-      // 替換 [[欄位]] 為實際資料（記得 encodeURIComponent）
+      // 自動帶入欄位（可自行擴充）
       target = target
         .replace('[[USER_ID]]', encodeURIComponent(userId))
         .replace('[[姓名]]', encodeURIComponent(userData.name))
