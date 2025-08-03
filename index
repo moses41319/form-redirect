@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Redirecting...</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    async function main() {
+      await liff.init({ liffId: "2007867560-dlxn7yaL" });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      const userId = (await liff.getProfile()).userId;
+
+      // 讀取 URL 中的 target 參數
+      const urlParams = new URLSearchParams(window.location.search);
+      const target = urlParams.get("target");
+
+      if (target) {
+        const redirectUrl = target.replace('[[USER_ID]]', encodeURIComponent(userId));
+        window.location.href = redirectUrl;
+      } else {
+        document.body.innerHTML = "<h3>❌ 缺少 target 參數</h3>";
+      }
+    }
+
+    main();
+  </script>
+</head>
+<body>
+  <h3>🔄 正在為您載入表單...</h3>
+</body>
+</html>
