@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Redirecting...</title>
+  <title>表單自動帶入中...</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -16,27 +16,28 @@
         return;
       }
 
-      const userId = (await liff.getProfile()).userId;
+      const profile = await liff.getProfile();
+      const userId = profile.userId;
 
-      // 從 Google Apps Script 取得會員資料
-      const res = await fetch(`https://script.google.com/macros/s/AKfycbx.../exec?userId=${userId}`);
+      // 🔗 改成你部署的 Apps Script 查詢 API 網址
+      const apiUrl = `https://script.google.com/macros/s/AKfycbx.../exec?userId=${userId}`;
+      const res = await fetch(apiUrl);
       const userData = await res.json();
 
-      if (!userData || !userData.success) {
+      if (!userData.success) {
         document.body.innerHTML = "<h3>❌ 查無會員資料，請先註冊</h3>";
         return;
       }
 
-      // 讀取目標網址
-      const urlParams = new URLSearchParams(window.location.search);
-      let target = urlParams.get("target");
+      const params = new URLSearchParams(window.location.search);
+      let target = params.get("target");
 
       if (!target) {
         document.body.innerHTML = "<h3>❌ 缺少 target 參數</h3>";
         return;
       }
 
-      // 替換參數
+      // 替換 [[欄位]] 為實際資料（記得 encodeURIComponent）
       target = target
         .replace('[[USER_ID]]', encodeURIComponent(userId))
         .replace('[[姓名]]', encodeURIComponent(userData.name))
