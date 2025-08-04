@@ -1,54 +1,59 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Redirecting...</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-</head>
-<body>
-  <h3>🔄 正在為您載入表單...</h3>
-  <script>
-    async function main() {
-      await liff.init({ liffId: "2007867560-ElN1bVyv" });
+  <head>
+    <meta charset="UTF-8" />
+    <title>Redirecting...</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        padding-top: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>🔁 正在為您載入表單...</h2>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+      async function main() {
+        try {
+          await liff.init({ liffId: "2007867560-ElN1bVyv" });
 
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
+          if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
+          }
+
+          const userProfile = await liff.getProfile();
+          const userId = liff.getContext().userId;
+
+          const targetUrl = new URLSearchParams(window.location.search).get("target");
+          if (!targetUrl) {
+            document.body.innerHTML = "<p>❌ 未提供表單網址</p>";
+            return;
+          }
+
+          const apiUrl =
+            "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec?userId=" +
+            encodeURIComponent(userId);
+
+          const response = await fetch(apiUrl);
+          const memberData = await response.json();
+
+          const filledUrl = targetUrl
+            .replace("[[USER_ID]]", encodeURIComponent(userId))
+            .replace("[[姓名]]", encodeURIComponent(memberData.姓名 || ""))
+            .replace("[[手機]]", encodeURIComponent(memberData.手機 || ""))
+            .replace("[[地址]]", encodeURIComponent(memberData.地址 || ""));
+
+          window.location.href = filledUrl;
+        } catch (error) {
+          document.body.innerHTML = "<p>🚨 發生錯誤： " + error + "</p>";
+          console.error(error);
+        }
       }
 
-      const profile = await liff.getProfile();
-      const userId = profile.userId;
-
-      // 查詢會員資料 API
-      const res = await fetch(`https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec?userId=${userId}`);
-      const userData = await res.json();
-
-      if (!userData || !userData.success) {
-        document.body.innerHTML = "<h3>❌ 查無會員資料，請先註冊</h3>";
-        return;
-      }
-
-      // 從網址參數取得 target 表單網址
-      const urlParams = new URLSearchParams(window.location.search);
-      let target = urlParams.get("target");
-
-      if (!target) {
-        document.body.innerHTML = "<h3>❌ 缺少 target 參數</h3>";
-        return;
-      }
-
-      // 替換表單參數（根據你目前的 Google 表單欄位參數）
-      target = target
-        .replace('[[USER_ID]]', encodeURIComponent(userId))
-        .replace('[[姓名]]', encodeURIComponent(userData.name || ''))
-        .replace('[[手機]]', encodeURIComponent(userData.phone || ''))
-        .replace('[[地址]]', encodeURIComponent(userData.address || ''));
-
-      // 開始跳轉
-      window.location.href = target;
-    }
-
-    main();
-  </script>
-</body>
+      main();
+    </script>
+  </body>
 </html>
