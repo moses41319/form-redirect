@@ -1,58 +1,74 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Redirecting...</title>
-  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <meta charset="UTF-8">
+  <title>🔄 正在為您載入表單...</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding-top: 50px;
+    }
+    .countdown {
+      font-size: 1.5em;
+      margin-top: 10px;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
-  <p>正在為您載入表單...</p>
+  <h2>🔄 正在為您載入表單...</h2>
+  <div class="countdown">請稍候，倒數 <span id="count">5</span> 秒</div>
 
   <script>
-    const liffId = '2007867560-ElN1bVyv'; // 你的 LIFF ID
-    const queryApi = 'https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec';
-    const targetForm = 'https://docs.google.com/forms/d/e/1FAIpQLSdz2vdeT-YnMk1YfhDxpgLwJKAOEjbby5po0pRfm1EBUwTpgw/viewform';
-
-    const entryMap = {
-      userId: 'entry.793703378',
-      name: 'entry.152457699',
-      phone: 'entry.1530988381',
-      address: 'entry.1009832972',
-      email: 'entry.1833264332' // 若未設定此欄請移除
-    };
-
     async function main() {
-      await liff.init({ liffId });
-      if (!liff.isLoggedIn()) liff.login();
+      await liff.init({ liffId: "2007867560-ElN1bVyv" });
 
-      const userId = liff.getContext().userId;
-      if (!userId) {
-        alert('無法取得使用者 ID');
+      if (!liff.isLoggedIn()) {
+        liff.login();
         return;
       }
 
-      try {
-        const res = await fetch(`${queryApi}?userId=${userId}`);
-        const data = await res.json();
+      const userId = (await liff.getProfile()).userId;
 
-        if (!data.success) {
-          alert('查無會員資料');
-          return;
-        }
+      // 從 Google Apps Script 查詢會員資料
+      const res = await fetch(`https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec?userId=${userId}`);
+      const userData = await res.json();
 
-        const params = new URLSearchParams();
-        params.append(entryMap.userId, userId);
-        if (data.name) params.append(entryMap.name, data.name);
-        if (data.phone) params.append(entryMap.phone, data.phone);
-        if (data.address) params.append(entryMap.address, data.address);
-        if (data.email) params.append(entryMap.email, data.email);
-
-        const redirectUrl = `${targetForm}?${params.toString()}`;
-        window.location.href = redirectUrl;
-      } catch (err) {
-        console.error(err);
-        alert('發生錯誤，請稍後再試。');
+      if (!userData || !userData.success) {
+        document.body.innerHTML = "<h3>❌ 查無會員資料，請先註冊</h3>";
+        return;
       }
+
+      // 組合 target 連結
+      const urlParams = new URLSearchParams(window.location.search);
+      let target = urlParams.get("target");
+
+      if (!target) {
+        document.body.innerHTML = "<h3>❌ 缺少 target 參數</h3>";
+        return;
+      }
+
+      // 替換參數
+      target = target
+        .replace('[[USER_ID]]', encodeURIComponent(userId))
+        .replace('[[姓名]]', encodeURIComponent(userData.name))
+        .replace('[[手機]]', encodeURIComponent('0' + userData.phone.toString()))
+        .replace('[[地址]]', encodeURIComponent(userData.address))
+        .replace('[[EMAIL]]', encodeURIComponent(userData.email || ''));
+
+      // 倒數跳轉
+      let seconds = 5;
+      const countSpan = document.getElementById('count');
+      const countdown = setInterval(() => {
+        seconds--;
+        countSpan.textContent = seconds;
+        if (seconds <= 0) {
+          clearInterval(countdown);
+          window.location.href = target;
+        }
+      }, 1000);
     }
 
     main();
