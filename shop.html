@@ -24,11 +24,13 @@
   </style>
 </head>
 <body>
+  <!-- ✅ 載入畫面 -->
   <div id="loading-screen">
     <div>🔄 讀取中請稍後...</div>
     <div id="countdown">5</div>
   </div>
 
+  <!-- ✅ 主畫面區塊 -->
   <h1 style="display:none" id="pageTitle">結緣品商店</h1>
   <div id="formArea" style="display:none"></div>
   <div id="productArea" style="display:none">載入商品中...</div>
@@ -44,22 +46,27 @@
     let products = [];
 
     async function preloadData() {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        userId = liff.getContext()?.userId || profile.userId;
+
+        // 查詢會員
+        const userRes = await fetch(API_BASE + "?userId=" + userId);
+        user = await userRes.json();
+
+        // 查詢商品
+        const productRes = await fetch(API_BASE + "?action=products");
+        products = await productRes.json();
+      } catch (err) {
+        document.getElementById("loading-screen").innerHTML = "❌ 發生錯誤，請重新整理頁面";
+        console.error(err);
       }
-
-      const profile = await liff.getProfile();
-      userId = liff.getContext().userId || profile.userId;
-
-      // 查詢會員資料
-      const userRes = await fetch(API_BASE + "?userId=" + userId);
-      user = await userRes.json();
-
-      // 查詢商品
-      const productRes = await fetch(API_BASE + "?action=products");
-      products = await productRes.json();
     }
 
     function renderPage() {
@@ -147,20 +154,25 @@
       }
     };
 
-    // 頁面啟動流程
+    // 啟動
     (async () => {
-      await preloadData();
-
       let countdown = 5;
-      const countdownEl = document.getElementById('countdown');
-      const loadingScreen = document.getElementById('loading-screen');
+      const countdownEl = document.getElementById("countdown");
+      const loadingEl = document.getElementById("loading-screen");
+
+      // 開始預載資料
+      const preloadPromise = preloadData();
+
+      // 倒數顯示
       const interval = setInterval(() => {
         countdown--;
         countdownEl.textContent = countdown;
         if (countdown === 0) {
           clearInterval(interval);
-          loadingScreen.style.display = 'none';
-          renderPage(); // 開始顯示內容
+          preloadPromise.then(() => {
+            loadingEl.style.display = "none";
+            renderPage();
+          });
         }
       }, 1000);
     })();
