@@ -5,106 +5,165 @@
   <title>結緣品商店</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 2em; }
-    h1 { font-size: 2em; }
-    input, select { font-size: 1em; padding: 0.5em; width: 100%; margin: 0.5em 0; }
-    .product { border-top: 1px solid #ccc; padding-top: 1em; margin-top: 1em; }
-    button { font-size: 1.2em; padding: 0.6em 1em; margin-top: 1em; }
-    .error { color: red; font-weight: bold; }
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: white;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    #countdown {
+      font-size: 48px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
-  <h1>結緣品商店</h1>
-  <div>
-    <label>姓名：<input id="name" /></label><br />
-    <label>手機：<input id="phone" /></label><br />
-    <label>地址：<input id="address" /></label>
+  <div id="loading-screen">
+    <div>🔄 讀取中請稍後...</div>
+    <div id="countdown">5</div>
   </div>
 
-  <div id="products"></div>
-
-  <div>
-    <label>帳號末五碼：<input id="accountLast5" /></label>
-  </div>
-
-  <button onclick="submitOrder()">🛍️ 結帳送出</button>
-  <div id="result" class="error"></div>
+  <h1 style="display:none" id="pageTitle">結緣品商店</h1>
+  <div id="formArea" style="display:none"></div>
+  <div id="productArea" style="display:none">載入商品中...</div>
+  <button id="submitBtn" style="display:none">🛍️ 結帳送出</button>
+  <div id="result"></div>
 
   <script>
     const LIFF_ID = "2007867560-LKO28Gor";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
+    const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
+
     let userId = "";
+    let user = {};
+    let products = [];
 
-    async function main() {
+    async function preloadData() {
       await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) liff.login();
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-
-      // 抓使用者資料
-      const res = await fetch(`${GAS_URL}?userId=${userId}`);
-      const data = await res.json();
-      if (data.success) {
-        document.getElementById("name").value = data.name || "";
-        document.getElementById("phone").value = data.phone || "";
-        document.getElementById("address").value = data.address || "";
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
       }
 
-      // 抓商品
-      const res2 = await fetch(`${GAS_URL}?action=products`);
-      const products = await res2.json();
-      const container = document.getElementById("products");
-      container.innerHTML = "<h2>請選擇結緣品：</h2>";
-      products.forEach(p => {
-        container.innerHTML += `
-          <div class="product">
-            <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br />
-            數量：<select id="qty_${p.code}">
-              ${[...Array(6).keys()].map(i => `<option value="${i}">${i}</option>`).join('')}
-            </select>
-          </div>`;
-      });
+      const profile = await liff.getProfile();
+      userId = liff.getContext().userId || profile.userId;
+
+      // 查詢會員資料
+      const userRes = await fetch(API_BASE + "?userId=" + userId);
+      user = await userRes.json();
+
+      // 查詢商品
+      const productRes = await fetch(API_BASE + "?action=products");
+      products = await productRes.json();
     }
 
-    async function submitOrder() {
+    function renderPage() {
+      if (!user.name) {
+        document.body.innerHTML = `
+          <p>❌ 尚未註冊會員，請先註冊</p>
+          <a href="https://liff.line.me/2007867560-dlxn7yaL">👉 點我註冊</a>
+        `;
+        return;
+      }
+
+      document.getElementById("pageTitle").style.display = "block";
+      document.getElementById("formArea").style.display = "block";
+      document.getElementById("productArea").style.display = "block";
+
+      document.getElementById("formArea").innerHTML = `
+        姓名：<input id="name" value="${user.name}"><br>
+        手機：<input id="phone" value="${user.phone}"><br>
+        地址：<input id="address" value="${user.address}"><br><br>
+      `;
+
+      const area = document.getElementById("productArea");
+      area.innerHTML = "";
+
+      if (!products.length) {
+        area.innerHTML = "<p>⚠️ 無商品可購買，請稍後再試。</p>";
+        return;
+      }
+
+      products.forEach(p => {
+        if (!p.code || !p.name) return;
+        const line = document.createElement("div");
+        line.innerHTML = `
+          <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br>
+          數量：
+          <select id="qty-${p.code}">
+            ${[...Array(Math.min(2, p.stock + 1)).keys()].map(q => `<option value="${q}">${q}</option>`).join("")}
+          </select>
+          <hr>
+        `;
+        area.appendChild(line);
+      });
+
+      document.getElementById("submitBtn").style.display = "block";
+    }
+
+    document.getElementById("submitBtn").onclick = async () => {
       const name = document.getElementById("name").value;
       const phone = document.getElementById("phone").value;
       const address = document.getElementById("address").value;
-      const accountLast5 = document.getElementById("accountLast5").value;
 
-      const res2 = await fetch(`${GAS_URL}?action=products`);
-      const products = await res2.json();
       const items = products.map(p => {
-        const qty = parseInt(document.getElementById(`qty_${p.code}`).value);
-        return qty > 0 ? { name: p.name, price: p.price, qty } : null;
-      }).filter(i => i);
+        const qty = parseInt(document.getElementById("qty-" + p.code)?.value || "0");
+        return { ...p, qty };
+      }).filter(p => p.qty > 0);
 
-      if (!items.length) return document.getElementById("result").innerText = "請選擇至少一項結緣品";
+      if (items.length === 0) {
+        alert("請至少選擇一項商品");
+        return;
+      }
 
-      const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-      const payload = {
+      const body = {
         userId,
         name,
         phone,
         address,
-        accountLast5,
-        items,
-        total
+        items
       };
 
-      const result = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      const text = await result.text();
-      if (text === "OK") {
-        document.getElementById("result").innerText = "✅ 訂單已送出！";
-      } else {
-        document.getElementById("result").innerText = "❌ 發生錯誤，請稍後再試";
-      }
-    }
+      document.getElementById("submitBtn").innerText = "送出中...";
+      try {
+        const res = await fetch(API_BASE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
 
-    main();
+        const txt = await res.text();
+        document.getElementById("result").innerText = "✅ 結緣成功：" + txt;
+        document.getElementById("submitBtn").style.display = "none";
+      } catch (err) {
+        document.getElementById("result").innerText = "❌ 發生錯誤，請稍後再試";
+        console.error(err);
+        document.getElementById("submitBtn").innerText = "🛍️ 結帳送出";
+      }
+    };
+
+    // 頁面啟動流程
+    (async () => {
+      await preloadData();
+
+      let countdown = 5;
+      const countdownEl = document.getElementById('countdown');
+      const loadingScreen = document.getElementById('loading-screen');
+      const interval = setInterval(() => {
+        countdown--;
+        countdownEl.textContent = countdown;
+        if (countdown === 0) {
+          clearInterval(interval);
+          loadingScreen.style.display = 'none';
+          renderPage(); // 開始顯示內容
+        }
+      }, 1000);
+    })();
   </script>
 </body>
 </html>
