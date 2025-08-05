@@ -1,58 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <title>訂單完成</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 2em; white-space: pre-line; }
-    .success { font-size: 1.2em; color: green; }
-    .info { margin-top: 1.5em; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    #orderInfo {
+      white-space: pre-wrap;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 8px;
+      line-height: 1.8;
+    }
   </style>
 </head>
 <body>
-  <div class="success">✅ 訂單已送出成功</div>
-  <div id="info" class="info">資料載入中，請稍候...</div>
+  <h2>🙏 感謝您的結緣 🙏</h2>
+  <div id="orderInfo">載入中...</div>
 
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
-    const LIFF_ID = "2007867560-LKO28Gor";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
+    const scriptUrl = "https://script.google.com/macros/s/你的ScriptID/exec"; // ←請替換成你的 Apps Script 網址
 
     async function main() {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) liff.login();
+      await liff.init({ liffId: "你的 LIFF ID" }); // ←請替換成你的 LIFF ID
 
-      const profile = await liff.getProfile();
-      const userId = profile.userId;
-
-      try {
-        // 查詢會員最後一筆訂單
-        const orderRes = await fetch(`${GAS_URL}?action=lastOrder&userId=${userId}`);
-        const orderData = await orderRes.json();
-
-        if (!orderData.success || !orderData.order) {
-          document.getElementById("info").innerText = "❌ 查無訂單資料。";
-          return;
-        }
-
-        const { name, phone, address, total, items } = orderData.order;
-
-        let message = `👤 姓名：${name}\n📱 電話：${phone}\n🏠 地址：${address}\n\n🧧 結緣明細：\n`;
-
-        items.forEach(item => {
-          message += `📦 ${item.name} x${item.qty}\n`;
-          message += `🏦 銀行：${item.bank || '未填寫'}\n`;
-          message += `👤 戶名：${item.accountName || '未填寫'}\n`;
-          message += `🔢 帳號：${item.accountNumber || '未填寫'}\n\n`;
-        });
-
-        message += `💰 總金額：${total} 元`;
-
-        document.getElementById("info").innerText = message;
-
-      } catch (err) {
-        document.getElementById("info").innerText = "❌ 系統錯誤：" + err.message;
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
       }
+
+      const userId = (await liff.getDecodedIDToken()).sub;
+
+      fetch(`${scriptUrl}?action=lastOrder&userId=${userId}`)
+        .then(res => res.json())
+        .then(data => {
+          const orderInfoDiv = document.getElementById("orderInfo");
+
+          if (!data.success) {
+            orderInfoDiv.innerText = "⚠️ 查無訂單資料，請稍後再試。";
+            return;
+          }
+
+          const order = data.order;
+          let message = `✅ 訂單已送出，請依下列匯款資訊付款：\n\n`;
+
+          order.items.forEach(item => {
+            message += `📦 ${item.name} x${item.qty}\n`;
+            message += `🏦 銀行：${item.bank}\n`;
+            message += `👤 戶名：${item.accountName}\n`;
+            message += `🔢 帳號：${item.accountNumber}\n\n`;
+          });
+
+          message += `💰 總金額：${order.total} 元`;
+
+          orderInfoDiv.innerText = message;
+        })
+        .catch(err => {
+          document.getElementById("orderInfo").innerText = "⚠️ 發生錯誤，請稍後再試。";
+          console.error(err);
+        });
     }
 
     main();
