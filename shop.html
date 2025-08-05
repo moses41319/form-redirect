@@ -1,146 +1,87 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1,maximum-scale=1"
-  />
+  <meta charset="UTF-8">
   <title>結緣品商店</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-           margin: 0; padding: 1.25rem; line-height: 1.6; }
-    .card { border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; }
-    .btn  { display: inline-block; padding: 0.5rem 1rem; border-radius: 0.5rem;
-            border: none; font-size: 1rem; cursor: pointer; }
-    .btn-primary { background: #06c755; color: #fff; }
-    .btn-disabled { background: #a0aec0; color: #fff; cursor: not-allowed; }
-    .hidden { display: none; }
-    .status { margin-top: 0.5rem; font-weight: 600; }
-    .input-block { margin-bottom: 0.75rem; }
-    .input-block label { display:block; font-size: 0.875rem; color:#4a5568; margin-bottom:0.25rem; }
-    .input-block input { width:100%; padding:0.5rem; border:1px solid #cbd5e0;
-                         border-radius:0.5rem; background:#edf2f7; }
-  </style>
 </head>
 <body>
-  <h2 style="text-align:center; margin-bottom:1rem;">結緣品商店</h2>
-
-  <!-- 會員資料區 -->
-  <div id="memberArea" class="card hidden">
-    <h3>會員資料</h3>
-    <div class="input-block">
-      <label>姓名</label>
-      <input id="memName" disabled />
-    </div>
-    <div class="input-block">
-      <label>手機</label>
-      <input id="memPhone" disabled />
-    </div>
-    <div class="input-block">
-      <label>地址</label>
-      <input id="memAddress" disabled />
-    </div>
-  </div>
-
-  <!-- 商品列表 -->
-  <div id="productArea" class="hidden">
-    <div class="card">
-      <h3>道慈緣督導結界粉 <small>(NT$ 999)</small></h3>
-      <button class="btn btn-primary" data-product="product1" id="btnP1">購買</button>
-      <span id="statusP1" class="status"></span>
-    </div>
-
-    <div class="card">
-      <h3>李修緣濟公甘露水 <small>(NT$ 888)</small></h3>
-      <button class="btn btn-primary" data-product="product2" id="btnP2">購買</button>
-      <span id="statusP2" class="status"></span>
-    </div>
-  </div>
-
-  <!-- 尚未註冊提示 -->
-  <div id="notReg" class="card hidden">
-    <h3>尚未註冊會員</h3>
-    <p>請先完成會員註冊後再回來購買。</p>
-    <button class="btn btn-primary" id="goRegister">前往註冊</button>
-  </div>
+  <h1>結緣品商店</h1>
+  <div id="log"></div>
+  <div id="productArea"></div>
 
   <script>
-    /*******************  參數設定  *******************/
-    const LIFF_ID   = "2007867560-LKO28Gor";       // 你的 LIFF ID
-    const API_BASE  = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
-    const REGISTER_URL = "https://moses41319.github.io/form-redirect/?form=register"; // 未註冊導向
+    const LIFF_ID = "2007867560-LKO28Gor"; // ✅ 替換為你的最新 LIFF ID
+    const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
 
-    let userId = "";
-
-    /*******************  主流程  *******************/
-    async function init() {
+    async function main() {
+      document.getElementById("log").innerText = "初始化中...";
       await liff.init({ liffId: LIFF_ID });
-      await liff.ready;
-      // 取得使用者 userId（需在 LINE 應用中開啟）
-      const context = liff.getContext();
-      if (context.type === "none") {
-        alert("請用 LINE 打開本網頁才能購買。");
-        return;
-      }
-      userId = context.userId || (await liff.getProfile()).userId;
 
-      // 1) 會員查詢
-      const member = await fetch(`${API_BASE}?userId=${encodeURIComponent(userId)}`)
-                           .then(r => r.json())
-                           .catch(() => ({}));
-
-      if (!member || !member.name) {
-        // 未註冊
-        document.getElementById("notReg").classList.remove("hidden");
-        document.getElementById("goRegister").addEventListener("click", () => {
-          // 跳轉註冊頁（可自行改網址）
-          location.href = REGISTER_URL;
-        });
+      if (!liff.isLoggedIn()) {
+        document.getElementById("log").innerText = "尚未登入，重新導向中...";
+        liff.login();
         return;
       }
 
-      // 2) 顯示會員資料
-      document.getElementById("memName").value    = member.name  || "";
-      document.getElementById("memPhone").value   = member.phone || "";
-      document.getElementById("memAddress").value = member.address || "";
-      document.getElementById("memberArea").classList.remove("hidden");
-      document.getElementById("productArea").classList.remove("hidden");
+      const profile = await liff.getProfile();
+      const userId = liff.getContext().userId;
+      document.getElementById("log").innerText = "載入中... " + userId;
 
-      // 3) 綁定購買按鈕
-      document.querySelectorAll("button[data-product]").forEach(btn => {
-        btn.addEventListener("click", () => purchase(btn));
+      // 查詢會員資料
+      const res = await fetch(API_BASE + "?userId=" + userId);
+      const result = await res.json();
+
+      if (!result || !result.name) {
+        document.getElementById("log").innerText = "查無會員資料，請先註冊。";
+        return;
+      }
+
+      // 顯示會員資訊
+      document.getElementById("log").innerHTML = `
+        👤 姓名：${result.name}<br>
+        📱 手機：${result.phone}<br>
+        🏠 地址：${result.address}<br><br>
+      `;
+
+      // 顯示商品按鈕
+      const productArea = document.getElementById("productArea");
+      const products = [
+        { name: "道慈緣督導結界粉", price: 999, id: "item1" },
+        { name: "李修緣濟公甘露水", price: 888, id: "item2" }
+      ];
+
+      products.forEach(p => {
+        const btn = document.createElement("button");
+        btn.innerText = `${p.name}（${p.price}元）`;
+        btn.onclick = async () => {
+          btn.disabled = true;
+          btn.innerText = "處理中...";
+
+          const payload = {
+            userId,
+            name: result.name,
+            phone: result.phone,
+            address: result.address,
+            item: p.name,
+            price: p.price
+          };
+
+          const submit = await fetch(API_BASE, {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+
+          const resp = await submit.text();
+          alert("✅ 結緣成功：" + resp);
+          btn.innerText = "已購買";
+        };
+        productArea.appendChild(btn);
+        productArea.appendChild(document.createElement("br"));
       });
     }
 
-    /*******************  購買  *******************/
-    async function purchase(button) {
-      const productId = button.dataset.product;
-      const statusEl  = document.getElementById("status" + productId.toUpperCase().replace("PRODUCT","P"));
-      button.classList.add("btn-disabled");
-      button.disabled = true;
-      statusEl.textContent = "處理中…";
-
-      const res = await fetch(API_BASE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, productId })
-      }).then(r => r.json())
-        .catch(() => ({ success:false, message:"伺服器錯誤" }));
-
-      if (res.success) {
-        statusEl.textContent = "✅ 購買成功！";
-        liff.closeWindow();   // 成功後直接關閉 LIFF，如不需要可刪掉
-      } else {
-        statusEl.textContent = "❌ " + res.message;
-        button.classList.remove("btn-disabled");
-        button.disabled = false;
-      }
-    }
-
-    init();
+    main();
   </script>
 </body>
 </html>
