@@ -1,74 +1,31 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>訂單完成</title>
+  <title>感謝您的結緣</title>
   <style>
     body {
       font-family: sans-serif;
       padding: 20px;
-      background-color: #f9f9f9;
+      background-color: #fffbe6;
+      color: #333;
     }
-    #orderInfo {
-      white-space: pre-wrap;
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 15px;
-      border-radius: 8px;
-      line-height: 1.8;
+    h1 {
+      color: #bb0000;
+    }
+    .thank-you {
+      border: 2px solid #bb0000;
+      padding: 20px;
+      border-radius: 10px;
+      background-color: #fff;
     }
   </style>
 </head>
 <body>
-  <h2>🙏 感謝您的結緣 🙏</h2>
-  <div id="orderInfo">載入中...</div>
-
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script>
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec
-"; // ←請替換成你的 Apps Script 網址
-
-    async function main() {
-      await liff.init({ liffId: "2007867560-LKO28Gor" }); // ←請替換成你的 LIFF ID
-
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
-
-      const userId = (await liff.getDecodedIDToken()).sub;
-
-      fetch(`${scriptUrl}?action=lastOrder&userId=${userId}`)
-        .then(res => res.json())
-        .then(data => {
-          const orderInfoDiv = document.getElementById("orderInfo");
-
-          if (!data.success) {
-            orderInfoDiv.innerText = "⚠️ 查無訂單資料，請稍後再試。";
-            return;
-          }
-
-          const order = data.order;
-          let message = `✅ 訂單已送出，請依下列匯款資訊付款：\n\n`;
-
-          order.items.forEach(item => {
-            message += `📦 ${item.name} x${item.qty}\n`;
-            message += `🏦 銀行：${item.bank}\n`;
-            message += `👤 戶名：${item.accountName}\n`;
-            message += `🔢 帳號：${item.accountNumber}\n\n`;
-          });
-
-          message += `💰 總金額：${order.total} 元`;
-
-          orderInfoDiv.innerText = message;
-        })
-        .catch(err => {
-          document.getElementById("orderInfo").innerText = "⚠️ 發生錯誤，請稍後再試。";
-          console.error(err);
-        });
-    }
-
-    main();
-  </script>
+  <div class="thank-you">
+    <h1>🙏 感謝您的結緣</h1>
+    <p>您的訂單已成功送出，我們將盡快為您處理。</p>
+    <p>請記得依據匯款資訊完成付款，祝福您平安順心、福慧增長。</p>
+  </div>
 </body>
 </html>
