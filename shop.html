@@ -16,7 +16,7 @@
 <body>
   <h1>結緣品表單</h1>
   <div>
-    <label>資料讀取中...請稍後10秒</label><br /><br />
+    <label>資料讀取中...請稍後10秒</label><br />
     <label>姓名：<input id="name" /></label><br />
     <label>手機：<input id="phone" /></label><br />
     <label>地址：<input id="address" /></label>
@@ -28,11 +28,11 @@
     <label>帳號末五碼：<input id="accountLast5" /></label>
   </div>
 
-  <button onclick="submitOrder()">🛍️ 確認送出</button>
+  <button onclick="submitOrder()">🛍️ 結帳送出</button>
   <div id="result" class="error"></div>
 
   <script>
-    const LIFF_ID = "2007867560-LKO28Gor";
+    const LIFF_ID = "2007867560-LKO28Gor"; // 你的 LIFF ID
     const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
     let userId = "";
 
@@ -42,7 +42,6 @@
       const profile = await liff.getProfile();
       userId = profile.userId;
 
-      // 使用者資料
       const res = await fetch(`${GAS_URL}?userId=${userId}`);
       const data = await res.json();
       if (data.success) {
@@ -51,7 +50,6 @@
         document.getElementById("address").value = data.address || "";
       }
 
-      // 商品列表
       const res2 = await fetch(`${GAS_URL}?action=products`);
       const products = await res2.json();
       const container = document.getElementById("products");
@@ -75,49 +73,59 @@
       const address = document.getElementById("address").value.trim();
       const accountLast5 = document.getElementById("accountLast5").value.trim();
       const resultDiv = document.getElementById("result");
+      const submitBtn = document.querySelector("button");
 
-      // 檢查欄位
       if (!name || !phone || !address || !accountLast5) {
-        resultDiv.innerText = "❌ 請完整填寫姓名、手機、地址與帳號末五碼";
+        resultDiv.innerText = "❌ 請完整填寫所有欄位";
         return;
       }
 
-      resultDiv.innerText = "⏳ 送出中，請稍候...";
+      resultDiv.innerText = "⏳ 訂單送出中，請稍候...";
+      submitBtn.disabled = true;
 
-      // 讀取商品資訊
-      const res2 = await fetch(`${GAS_URL}?action=products`);
-      const products = await res2.json();
-      const items = products.map(p => {
-        const qty = parseInt(document.getElementById(`qty_${p.code}`).value);
-        return qty > 0 ? { code: p.code, name: p.name, price: p.price, qty } : null;
-      }).filter(i => i);
+      try {
+        const res2 = await fetch(`${GAS_URL}?action=products`);
+        const products = await res2.json();
+        const items = products.map(p => {
+          const qty = parseInt(document.getElementById(`qty_${p.code}`).value);
+          return qty > 0 ? { code: p.code, name: p.name, price: p.price, qty } : null;
+        }).filter(i => i);
 
-      if (!items.length) {
-        resultDiv.innerText = "❌ 請選擇至少一項結緣品";
-        return;
-      }
+        if (!items.length) {
+          resultDiv.innerText = "❌ 請選擇至少一項結緣品";
+          submitBtn.disabled = false;
+          return;
+        }
 
-      const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-      const payload = {
-        userId,
-        name,
-        phone,
-        address,
-        accountLast5,
-        items,
-        total
-      };
+        const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+        const payload = {
+          userId,
+          name,
+          phone,
+          address,
+          accountLast5,
+          items,
+          total
+        };
 
-      const result = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
+        const response = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
 
-      const text = await result.text();
-      if (text === "OK") {
-        resultDiv.innerText = "✅ 訂單已送出！感謝您的結緣。";
-      } else {
-        resultDiv.innerText = "❌ 發生錯誤，請稍後再試";
+        const text = await response.text();
+        if (text.trim() === "OK") {
+          resultDiv.innerText = "✅ 訂單已送出，即將跳轉...";
+          setTimeout(() => {
+            window.location.href = "thanks.html";
+          }, 1500);
+        } else {
+          resultDiv.innerText = "❌ 發生錯誤：" + text;
+          submitBtn.disabled = false;
+        }
+      } catch (error) {
+        resultDiv.innerText = "❌ 系統錯誤：" + error.message;
+        submitBtn.disabled = false;
       }
     }
 
