@@ -68,11 +68,19 @@
     }
 
     async function submitOrder() {
-      const name = document.getElementById("name").value;
-      const phone = document.getElementById("phone").value;
-      const address = document.getElementById("address").value;
-      const accountLast5 = document.getElementById("accountLast5").value;
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+      const accountLast5 = document.getElementById("accountLast5").value.trim();
+      const resultDiv = document.getElementById("result");
 
+      // 表單欄位檢查
+      if (!name || !phone || !address || !accountLast5) {
+        resultDiv.innerText = "❌ 請完整填寫姓名、手機、地址與帳號末五碼";
+        return;
+      }
+
+      // 抓商品資訊
       const res2 = await fetch(`${GAS_URL}?action=products`);
       const products = await res2.json();
       const items = products.map(p => {
@@ -80,7 +88,10 @@
         return qty > 0 ? { name: p.name, price: p.price, qty } : null;
       }).filter(i => i);
 
-      if (!items.length) return document.getElementById("result").innerText = "請選擇至少一項結緣品";
+      if (!items.length) {
+        resultDiv.innerText = "❌ 請選擇至少一項結緣品";
+        return;
+      }
 
       const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
       const payload = {
@@ -99,9 +110,9 @@
       });
       const text = await result.text();
       if (text === "OK") {
-        document.getElementById("result").innerText = "✅ 訂單已送出！";
+        resultDiv.innerText = "✅ 訂單已送出！";
       } else {
-        document.getElementById("result").innerText = "❌ 發生錯誤，請稍後再試";
+        resultDiv.innerText = "❌ 發生錯誤，請稍後再試";
       }
     }
 
