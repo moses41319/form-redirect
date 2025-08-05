@@ -13,64 +13,51 @@
   <div id="result"></div>
 
   <script>
-    const LIFF_ID = "2007867560-LKO28Gor"; // 你的 LIFF ID
-    const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec"; // Web App URL
+    const LIFF_ID = "2007867560-LKO28Gor";
+    const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
 
     let userId = "";
 
     async function main() {
       await liff.init({ liffId: LIFF_ID });
-
       if (!liff.isLoggedIn()) {
         liff.login();
         return;
       }
 
       const profile = await liff.getProfile();
-      userId = liff.getContext().userId || profile.userId;
+      userId = profile.userId;
 
       // 查詢會員資料
-      const userRes = await fetch(API_BASE + "?userId=" + userId);
-      const user = await userRes.json();
-
+      const resUser = await fetch(API_BASE + "?userId=" + userId);
+      const user = await resUser.json();
       if (!user.name) {
-        document.body.innerHTML = `
-          <p>❌ 尚未註冊會員，請先註冊</p>
-          <a href="https://liff.line.me/2007867560-dlxn7yaL">👉 點我註冊</a>
-        `;
+        document.body.innerHTML = `<p>❌ 尚未註冊會員，請先註冊</p><a href="https://liff.line.me/2007867560-dlxn7yaL">👉 點我註冊</a>`;
         return;
       }
 
-      // 顯示可編輯欄位
+      // 顯示會員表單
       document.getElementById("formArea").innerHTML = `
         姓名：<input id="name" value="${user.name}"><br>
         手機：<input id="phone" value="${user.phone}"><br>
         地址：<input id="address" value="${user.address}"><br><br>
       `;
 
-      // 顯示商品列表
-      const productRes = await fetch(API_BASE + "?action=products");
-      const products = await productRes.json();
+      // 顯示商品
+      const resProduct = await fetch(API_BASE + "?action=products");
+      const products = await resProduct.json();
       const area = document.getElementById("productArea");
       area.innerHTML = "";
-
-      if (!products.length) {
-        area.innerHTML = "<p>⚠️ 無商品可購買，請稍後再試。</p>";
-        return;
-      }
-
       products.forEach(p => {
         if (!p.code || !p.name) return;
-        const line = document.createElement("div");
-        line.innerHTML = `
+        area.innerHTML += `
           <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br>
           數量：
           <select id="qty-${p.code}">
-            ${[...Array(Math.min(2, p.stock + 1)).keys()].map(q => `<option value="${q}">${q}</option>`).join("")}
+            ${[...Array(Math.min(p.stock, 2)+1).keys()].map(i => `<option value="${i}">${i}</option>`).join("")}
           </select>
           <hr>
         `;
-        area.appendChild(line);
       });
 
       document.getElementById("submitBtn").style.display = "block";
@@ -81,12 +68,12 @@
       const phone = document.getElementById("phone").value;
       const address = document.getElementById("address").value;
 
-      const productRes = await fetch(API_BASE + "?action=products");
-      const products = await productRes.json();
+      const resProduct = await fetch(API_BASE + "?action=products");
+      const products = await resProduct.json();
 
       const items = products.map(p => {
         const qty = parseInt(document.getElementById("qty-" + p.code)?.value || "0");
-        return { ...p, qty };
+        return { code: p.code, name: p.name, price: p.price, qty };
       }).filter(p => p.qty > 0);
 
       if (items.length === 0) {
@@ -94,22 +81,15 @@
         return;
       }
 
-      const body = {
-        userId,
-        name,
-        phone,
-        address,
-        items
-      };
+      const body = { userId, name, phone, address, items };
 
       document.getElementById("submitBtn").innerText = "送出中...";
       try {
-        const res = await fetch(API_BASE, {
+        const res = await fetch(API_BASE + "?action=buy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
-
         const txt = await res.text();
         document.getElementById("result").innerText = "✅ 結緣成功：" + txt;
         document.getElementById("submitBtn").style.display = "none";
