@@ -1,71 +1,120 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>🔄 正在為您載入表單...</title>
+  <meta charset="UTF-8">
+  <title>結緣品商店</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding-top: 50px;
-    }
-  </style>
 </head>
 <body>
-  <h2>🔄 正在為您載入表單...</h2>
-  <p id="status">請稍候...</p>
+  <h1>結緣品商店</h1>
+  <div id="formArea"></div>
+  <div id="productArea">載入商品中...</div>
+  <button id="submitBtn" style="display:none">🛍️ 結帳送出</button>
+  <div id="result"></div>
 
   <script>
-    const liffId = '2007867560-ElN1bVyv'; // ✅ 你的 LIFF ID
-    const queryApi = 'https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec';
-    const targetForm = 'https://docs.google.com/forms/d/e/1FAIpQLSdz2vdeT-YnMk1YfhDxpgLwJKAOEjbby5po0pRfm1EBUwTpgw/viewform';
+    const LIFF_ID = "2007867560-LKO28Gor"; // ← 請替換為你的 LIFF ID
+    const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
 
-    const entryMap = {
-      userId: 'entry.793703378',
-      name: 'entry.152457699',
-      phone: 'entry.1530988381',
-      address: 'entry.1009832972',
-      email: 'entry.1833264332' // ✅ 如果你沒這欄可移除
-    };
+    let userId = "";
 
     async function main() {
-      try {
-        await liff.init({ liffId });
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-
-        const profile = await liff.getProfile();
-        const userId = profile.userId;
-        document.getElementById("status").innerText = "🔍 查詢會員資料中...";
-
-        const res = await fetch(`${queryApi}?userId=${userId}`);
-        const data = await res.json();
-
-        if (!data.success) {
-          document.getElementById("status").innerText = "❌ 查無會員資料，請先註冊。";
-          return;
-        }
-
-        const params = new URLSearchParams();
-        params.append(entryMap.userId, userId);
-        if (data.name) params.append(entryMap.name, data.name);
-        if (data.phone) params.append(entryMap.phone, '0' + String(data.phone)); // 補 0
-        if (data.address) params.append(entryMap.address, data.address);
-        if (data.email) params.append(entryMap.email, data.email);
-
-        const redirectUrl = `${targetForm}?${params.toString()}`;
-        document.getElementById("status").innerText = "✅ 資料取得成功，即將跳轉...";
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 1500);
-      } catch (err) {
-        console.error(err);
-        document.getElementById("status").innerText = "❌ 發生錯誤，請稍後再試";
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
       }
+
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+
+      // 驗證是否為已註冊信徒（只查「回應表單 1」）
+      const res = await fetch(`${API_BASE}?userId=${userId}`);
+      const data = await res.json();
+
+      if (!data.success) {
+        document.body.innerHTML = `
+          <p>❌ 尚未註冊會員，請先註冊</p>
+          <a href="https://liff.line.me/2007867560-dlxn7yaL">👉 點我註冊</a>
+        `;
+        return;
+      }
+
+      document.getElementById("formArea").innerHTML = `
+        姓名：<input id="name" value="${data.name}"><br>
+        手機：<input id="phone" value="${data.phone}"><br>
+        地址：<input id="address" value="${data.address}"><br><br>
+      `;
+
+      const productRes = await fetch(API_BASE + "?action=products");
+      const products = await productRes.json();
+      const area = document.getElementById("productArea");
+      area.innerHTML = "";
+
+      if (!products.length) {
+        area.innerHTML = "<p>⚠️ 無商品可購買，請稍後再試。</p>";
+        return;
+      }
+
+      products.forEach(p => {
+        const line = document.createElement("div");
+        line.innerHTML = `
+          <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br>
+          數量：
+          <select id="qty-${p.code}">
+            ${[...Array(Math.min(3, p.stock + 1)).keys()].map(q => `<option value="${q}">${q}</option>`).join("")}
+          </select>
+          <hr>
+        `;
+        area.appendChild(line);
+      });
+
+      document.getElementById("submitBtn").style.display = "block";
     }
+
+    document.getElementById("submitBtn").onclick = async () => {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+
+      const productRes = await fetch(API_BASE + "?action=products");
+      const products = await productRes.json();
+
+      const items = products.map(p => {
+        const qty = parseInt(document.getElementById("qty-" + p.code)?.value || "0");
+        return { ...p, qty };
+      }).filter(p => p.qty > 0);
+
+      if (items.length === 0) {
+        alert("請至少選擇一項商品");
+        return;
+      }
+
+      const body = {
+        userId,
+        name,
+        phone,
+        address,
+        items
+      };
+
+      document.getElementById("submitBtn").innerText = "送出中...";
+      try {
+        const res = await fetch(API_BASE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const txt = await res.text();
+        document.getElementById("result").innerText = "✅ 結緣成功：" + txt;
+        document.getElementById("submitBtn").style.display = "none";
+      } catch (err) {
+        document.getElementById("result").innerText = "❌ 發生錯誤，請稍後再試";
+        console.error(err);
+        document.getElementById("submitBtn").innerText = "🛍️ 結帳送出";
+      }
+    };
 
     main();
   </script>
