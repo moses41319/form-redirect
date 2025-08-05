@@ -11,44 +11,51 @@
   <div id="productArea"></div>
 
   <script>
-    const LIFF_ID = "2007867560-LKO28Gor"; // ✅ 替換為你的最新 LIFF ID
+    const LIFF_ID = "2007867560-LKO28Gor"; // 購物頁的 LIFF ID
     const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
+    const REGISTER_LINK = "https://liff.line.me/2007867560-dlxn7yaL"; // 註冊表單 LIFF 連結
 
     async function main() {
-      document.getElementById("log").innerText = "初始化中...";
+      document.getElementById("log").innerText = "🔄 初始化中...";
       await liff.init({ liffId: LIFF_ID });
 
       if (!liff.isLoggedIn()) {
-        document.getElementById("log").innerText = "尚未登入，重新導向中...";
+        document.getElementById("log").innerText = "🔐 尚未登入，重新導向中...";
         liff.login();
         return;
       }
 
-      const profile = await liff.getProfile();
       const userId = liff.getContext().userId;
-      document.getElementById("log").innerText = "載入中... " + userId;
+      document.getElementById("log").innerText = "🔍 查詢會員資料中...";
 
       // 查詢會員資料
       const res = await fetch(API_BASE + "?userId=" + userId);
       const result = await res.json();
 
       if (!result || !result.name) {
-        document.getElementById("log").innerText = "查無會員資料，請先註冊。";
+        document.getElementById("log").innerHTML = `
+          ❌ 查無會員資料，請先註冊後再進行購買。<br><br>
+          <a href="${REGISTER_LINK}" target="_blank">
+            👉 點我前往註冊
+          </a>
+        `;
         return;
       }
 
       // 顯示會員資訊
       document.getElementById("log").innerHTML = `
+        ✅ 已登入會員：<br>
         👤 姓名：${result.name}<br>
         📱 手機：${result.phone}<br>
         🏠 地址：${result.address}<br><br>
+        🛒 請選擇您要結緣的品項：<br><br>
       `;
 
       // 顯示商品按鈕
       const productArea = document.getElementById("productArea");
       const products = [
-        { name: "道慈緣督導結界粉", price: 999, id: "item1" },
-        { name: "李修緣濟公甘露水", price: 888, id: "item2" }
+        { name: "道慈緣督導結界粉", price: 999 },
+        { name: "李修緣濟公甘露水", price: 888 }
       ];
 
       products.forEach(p => {
@@ -56,7 +63,7 @@
         btn.innerText = `${p.name}（${p.price}元）`;
         btn.onclick = async () => {
           btn.disabled = true;
-          btn.innerText = "處理中...";
+          btn.innerText = "⏳ 處理中...";
 
           const payload = {
             userId,
@@ -74,7 +81,7 @@
 
           const resp = await submit.text();
           alert("✅ 結緣成功：" + resp);
-          btn.innerText = "已購買";
+          btn.innerText = "✅ 已完成";
         };
         productArea.appendChild(btn);
         productArea.appendChild(document.createElement("br"));
