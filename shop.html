@@ -4,88 +4,93 @@
   <meta charset="UTF-8">
   <title>結緣品商店</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    input, select { width: 300px; padding: 0.5em; margin: 0.3em; }
+    button { padding: 0.8em; font-size: 1em; }
+  </style>
 </head>
 <body>
   <h1>結緣品商店</h1>
   <div id="formArea"></div>
   <div id="productArea">載入商品中...</div>
-  <button id="submitBtn" style="display:none">🛍️ 結帳送出</button>
+  <button id="submitBtn" style="display:none">🔒 結帳送出</button>
   <div id="result"></div>
 
   <script>
     const LIFF_ID = "2007867560-LKO28Gor";
     const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
-
     let userId = "";
 
     async function main() {
       await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
-
+      if (!liff.isLoggedIn()) return liff.login();
       const profile = await liff.getProfile();
       userId = profile.userId;
 
-      // 查詢會員資料
-      const resUser = await fetch(API_BASE + "?userId=" + userId);
-      const user = await resUser.json();
-      if (!user.name) {
-        document.body.innerHTML = `<p>❌ 尚未註冊會員，請先註冊</p><a href="https://liff.line.me/2007867560-dlxn7yaL">👉 點我註冊</a>`;
+      const userRes = await fetch(API_BASE + "?action=verify&userId=" + userId);
+      const user = await userRes.json();
+
+      if (!user.success) {
+        document.body.innerHTML = `
+          <p>❌ 尚未註冊會員，請先註冊</p>
+          <a href="https://liff.line.me/2007867560-dlxn7yaL">👉 點我註冊</a>
+        `;
         return;
       }
 
-      // 顯示會員表單
       document.getElementById("formArea").innerHTML = `
-        姓名：<input id="name" value="${user.name}"><br>
-        手機：<input id="phone" value="${user.phone}"><br>
-        地址：<input id="address" value="${user.address}"><br><br>
+        姓名：<input id="name" value="${user.name || ''}"><br>
+        手機：<input id="phone" value="${user.phone || ''}"><br>
+        地址：<input id="address" value="${user.address || ''}"><br>
+        <br>
       `;
 
-      // 顯示商品
-      const resProduct = await fetch(API_BASE + "?action=products");
-      const products = await resProduct.json();
+      const productRes = await fetch(API_BASE + "?action=products");
+      const products = await productRes.json();
       const area = document.getElementById("productArea");
       area.innerHTML = "";
+
+      if (!products.length) {
+        area.innerHTML = "⚠️ 無商品可購買，請稍後再試。";
+        return;
+      }
+
       products.forEach(p => {
         if (!p.code || !p.name) return;
-        area.innerHTML += `
+        const div = document.createElement("div");
+        div.innerHTML = `
           <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br>
-          數量：
-          <select id="qty-${p.code}">
-            ${[...Array(Math.min(p.stock, 2)+1).keys()].map(i => `<option value="${i}">${i}</option>`).join("")}
+          數量：<select id="qty-${p.code}">
+            ${[...Array(Math.min(2, p.stock + 1)).keys()].map(q => `<option value="${q}">${q}</option>`).join('')}
           </select>
           <hr>
         `;
+        area.appendChild(div);
       });
 
       document.getElementById("submitBtn").style.display = "block";
     }
 
     document.getElementById("submitBtn").onclick = async () => {
-      const name = document.getElementById("name").value;
-      const phone = document.getElementById("phone").value;
-      const address = document.getElementById("address").value;
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
 
-      const resProduct = await fetch(API_BASE + "?action=products");
-      const products = await resProduct.json();
-
+      const productRes = await fetch(API_BASE + "?action=products");
+      const products = await productRes.json();
       const items = products.map(p => {
         const qty = parseInt(document.getElementById("qty-" + p.code)?.value || "0");
-        return { code: p.code, name: p.name, price: p.price, qty };
+        return { ...p, qty };
       }).filter(p => p.qty > 0);
 
-      if (items.length === 0) {
-        alert("請至少選擇一項商品");
-        return;
-      }
+      if (items.length === 0) return alert("請至少選擇一項商品");
 
       const body = { userId, name, phone, address, items };
-
       document.getElementById("submitBtn").innerText = "送出中...";
+
       try {
-        const res = await fetch(API_BASE + "?action=buy", {
+        const res = await fetch(API_BASE + "?action=submitOrder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
@@ -96,7 +101,7 @@
       } catch (err) {
         document.getElementById("result").innerText = "❌ 發生錯誤，請稍後再試";
         console.error(err);
-        document.getElementById("submitBtn").innerText = "🛍️ 結帳送出";
+        document.getElementById("submitBtn").innerText = "🔒 結帳送出";
       }
     };
 
