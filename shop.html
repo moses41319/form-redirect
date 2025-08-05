@@ -4,17 +4,48 @@
   <meta charset="UTF-8">
   <title>結緣品商店</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1em;
+    }
+    h1 {
+      text-align: center;
+    }
+    input, select {
+      margin: 0.5em 0;
+      width: 100%;
+      padding: 0.5em;
+    }
+    .product {
+      border: 1px solid #ccc;
+      padding: 1em;
+      margin: 1em 0;
+      border-radius: 8px;
+    }
+    #submitBtn {
+      display: none;
+      background-color: #4CAF50;
+      color: white;
+      padding: 1em;
+      border: none;
+      width: 100%;
+      font-size: 1.2em;
+      border-radius: 5px;
+      margin-top: 1em;
+    }
+  </style>
 </head>
 <body>
   <h1>結緣品商店</h1>
   <div id="formArea"></div>
   <div id="productArea"></div>
-  <button id="submitBtn" style="display:none">🛍️ 結帳送出</button>
+  <button id="submitBtn">🛍️ 結帳送出</button>
   <div id="result"></div>
 
   <script>
-    const LIFF_ID = "2007867560-LKO28Gor"; // 修改為你的 LIFF ID
-    const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec"; // 修改為你的 Web App URL
+    const LIFF_ID = "2007867560-LKO28Gor"; // ← 請改為你自己的 LIFF ID
+    const API_BASE = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec"; // ← 請改為你的 Apps Script 網址
 
     let userId = "";
 
@@ -28,7 +59,7 @@
 
       userId = liff.getContext().userId;
 
-      // 查詢會員資料
+      // 查會員資料
       const userRes = await fetch(API_BASE + "?userId=" + userId);
       const user = await userRes.json();
 
@@ -40,7 +71,7 @@
         return;
       }
 
-      // 顯示可編輯欄位
+      // 顯示基本資料欄位（可修改）
       document.getElementById("formArea").innerHTML = `
         姓名：<input id="name" value="${user.name}"><br>
         手機：<input id="phone" value="${user.phone}"><br>
@@ -53,16 +84,19 @@
       const area = document.getElementById("productArea");
 
       products.forEach(p => {
-        const line = document.createElement("div");
-        line.innerHTML = `
-          ${p.name}（${p.price}元，剩餘：${p.stock}）<br>
-          數量：
-          <select id="qty-${p.code}">
-            ${[...Array(p.stock + 1).keys()].map(q => `<option value="${q}">${q}</option>`).join("")}
-          </select>
-          <br><br>
+        const div = document.createElement("div");
+        div.className = "product";
+        div.innerHTML = `
+          <strong>${p.name}</strong><br>
+          價格：${p.price} 元<br>
+          剩餘：${p.stock}<br>
+          <label>購買數量：
+            <select id="qty-${p.code}">
+              ${[...Array(p.stock + 1).keys()].map(q => `<option value="${q}">${q}</option>`).join("")}
+            </select>
+          </label>
         `;
-        area.appendChild(line);
+        area.appendChild(div);
       });
 
       document.getElementById("submitBtn").style.display = "block";
@@ -95,14 +129,18 @@
       };
 
       document.getElementById("submitBtn").innerText = "送出中...";
-      const res = await fetch(API_BASE, {
-        method: "POST",
-        body: JSON.stringify(body)
-      });
 
-      const txt = await res.text();
-      document.getElementById("result").innerText = "✅ 結緣成功：" + txt;
-      document.getElementById("submitBtn").style.display = "none";
+      try {
+        const res = await fetch(API_BASE, {
+          method: "POST",
+          body: JSON.stringify(body)
+        });
+        const txt = await res.text();
+        document.getElementById("result").innerHTML = "✅ 結緣成功！訂單編號：" + txt;
+        document.getElementById("submitBtn").style.display = "none";
+      } catch (err) {
+        alert("❌ 發生錯誤：" + err.message);
+      }
     };
 
     main();
