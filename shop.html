@@ -48,6 +48,7 @@
         document.getElementById("name").value = data.name || "";
         document.getElementById("phone").value = data.phone || "";
         document.getElementById("address").value = data.address || "";
+        document.getElementById("accountLast5").value = data.accountLast5 || ""; // ✅ 加這一行
       }
 
       const res2 = await fetch(`${GAS_URL}?action=products`);
