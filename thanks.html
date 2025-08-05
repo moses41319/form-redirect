@@ -2,14 +2,60 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>感謝您的結緣</title>
+  <title>訂單完成</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 3em; }
-    h1 { color: green; font-size: 2em; }
+    body { font-family: sans-serif; padding: 2em; white-space: pre-line; }
+    .success { font-size: 1.2em; color: green; }
+    .info { margin-top: 1.5em; }
   </style>
 </head>
 <body>
-  <h1>🙏 感謝您的結緣！</h1>
-  <p>我們已收到您的訂單，祝您平安吉祥。</p>
+  <div class="success">✅ 訂單已送出成功</div>
+  <div id="info" class="info">資料載入中，請稍候...</div>
+
+  <script>
+    const LIFF_ID = "2007867560-LKO28Gor";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
+
+    async function main() {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) liff.login();
+
+      const profile = await liff.getProfile();
+      const userId = profile.userId;
+
+      try {
+        // 查詢會員最後一筆訂單
+        const orderRes = await fetch(`${GAS_URL}?action=lastOrder&userId=${userId}`);
+        const orderData = await orderRes.json();
+
+        if (!orderData.success || !orderData.order) {
+          document.getElementById("info").innerText = "❌ 查無訂單資料。";
+          return;
+        }
+
+        const { name, phone, address, total, items } = orderData.order;
+
+        let message = `👤 姓名：${name}\n📱 電話：${phone}\n🏠 地址：${address}\n\n🧧 結緣明細：\n`;
+
+        items.forEach(item => {
+          message += `📦 ${item.name} x${item.qty}\n`;
+          message += `🏦 銀行：${item.bank || '未填寫'}\n`;
+          message += `👤 戶名：${item.accountName || '未填寫'}\n`;
+          message += `🔢 帳號：${item.accountNumber || '未填寫'}\n\n`;
+        });
+
+        message += `💰 總金額：${total} 元`;
+
+        document.getElementById("info").innerText = message;
+
+      } catch (err) {
+        document.getElementById("info").innerText = "❌ 系統錯誤：" + err.message;
+      }
+    }
+
+    main();
+  </script>
 </body>
 </html>
