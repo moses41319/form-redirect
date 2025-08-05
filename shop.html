@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>結緣品表單</title>
+  <title>結緣報名表單</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body { font-family: sans-serif; padding: 2em; }
@@ -15,23 +14,27 @@
   </style>
 </head>
 <body>
-  <h1>結緣品表單</h1>
+  <h1>結緣報名表單</h1>
   <div>
     <label>資料讀取中...請稍後10秒</label><br /><br />
-    <label>姓名：<input id="name" /></label><br />
-    <label>手機：<input id="phone" /></label><br />
-    <label>地址：<input id="address" /></label><br />
-    <label>帳號末五碼：<input id="accountLast5" /></label>
+    <label>姓  名：<input id="name" /></label><br />
+    <label>手  機：<input id="phone" /></label><br />
+    <label>地  址：<input id="address" /></label><br />
+    <label>匯款帳號末五碼：<input id="accountLast5" /></label>
   </div>
 
   <div id="products"></div>
 
-  <button onclick="submitOrder()">🛍️ 結帳送出</button>
+  <div>
+    
+  </div>
+
+  <button onclick="submitOrder()">🛍️ 送 出</button>
   <div id="result" class="error"></div>
 
   <script>
-    const LIFF_ID = "2007867560-LKO28Gor";
-    const GAS_URL = "https://script.google.com/macros/s/YOUR_DEPLOYED_URL/exec";
+    const LIFF_ID = "2007867560-LKO28Gor"; // 你的 LIFF ID
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
     let userId = "";
 
     async function main() {
@@ -46,12 +49,13 @@
         document.getElementById("name").value = data.name || "";
         document.getElementById("phone").value = data.phone || "";
         document.getElementById("address").value = data.address || "";
+        document.getElementById("accountLast5").value = data.accountLast5 || ""; // ✅ 加這一行
       }
 
       const res2 = await fetch(`${GAS_URL}?action=products`);
       const products = await res2.json();
       const container = document.getElementById("products");
-      container.innerHTML = "<h2>請選擇結緣品（每種限購 1 件）：</h2>";
+      container.innerHTML = "<h2>請選擇結緣報名（每種限 1 件）：</h2>";
       products.forEach(p => {
         container.innerHTML += `
           <div class="product">
@@ -78,7 +82,7 @@
         return;
       }
 
-      resultDiv.innerText = "⏳ 訂單送出中，請稍候...";
+      resultDiv.innerText = "⏳ 送出中，請稍候...";
       submitBtn.disabled = true;
 
       try {
@@ -90,7 +94,7 @@
         }).filter(i => i);
 
         if (!items.length) {
-          resultDiv.innerText = "❌ 請選擇至少一項結緣品";
+          resultDiv.innerText = "❌ 請選擇至少一項結緣報名";
           submitBtn.disabled = false;
           return;
         }
@@ -113,7 +117,7 @@
 
         const text = await response.text();
         if (text.trim() === "OK") {
-          resultDiv.innerText = "✅ 訂單已送出，即將跳轉...";
+          resultDiv.innerText = "✅ 已送出，即將跳轉...";
           setTimeout(() => {
             window.location.href = "thanks.html";
           }, 1500);
