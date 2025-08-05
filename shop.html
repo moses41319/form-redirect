@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>結緣品商店</title>
+  <title>結緣品表單</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body { font-family: sans-serif; padding: 2em; }
@@ -14,9 +14,9 @@
   </style>
 </head>
 <body>
-  <h1>結緣品商店</h1>
+  <h1>結緣品表單</h1>
   <div>
-    <label>資料讀取中...請稍後10秒</label><br />
+    <label>資料讀取中...請稍後10秒</label><br /><br />
     <label>姓名：<input id="name" /></label><br />
     <label>手機：<input id="phone" /></label><br />
     <label>地址：<input id="address" /></label>
@@ -28,7 +28,7 @@
     <label>帳號末五碼：<input id="accountLast5" /></label>
   </div>
 
-  <button onclick="submitOrder()">🛍️ 結帳送出</button>
+  <button onclick="submitOrder()">🛍️ 確認送出</button>
   <div id="result" class="error"></div>
 
   <script>
@@ -42,7 +42,7 @@
       const profile = await liff.getProfile();
       userId = profile.userId;
 
-      // 抓使用者資料
+      // 使用者資料
       const res = await fetch(`${GAS_URL}?userId=${userId}`);
       const data = await res.json();
       if (data.success) {
@@ -51,17 +51,19 @@
         document.getElementById("address").value = data.address || "";
       }
 
-      // 抓商品
+      // 商品列表
       const res2 = await fetch(`${GAS_URL}?action=products`);
       const products = await res2.json();
       const container = document.getElementById("products");
-      container.innerHTML = "<h2>請選擇結緣品：</h2>";
+      container.innerHTML = "<h2>請選擇結緣品（每種限購 1 件）：</h2>";
       products.forEach(p => {
         container.innerHTML += `
           <div class="product">
             <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br />
-            數量：<select id="qty_${p.code}">
-              ${[...Array(6).keys()].map(i => `<option value="${i}">${i}</option>`).join('')}
+            數量：
+            <select id="qty_${p.code}">
+              <option value="0">0</option>
+              <option value="1">1</option>
             </select>
           </div>`;
       });
@@ -74,18 +76,20 @@
       const accountLast5 = document.getElementById("accountLast5").value.trim();
       const resultDiv = document.getElementById("result");
 
-      // 表單欄位檢查
+      // 檢查欄位
       if (!name || !phone || !address || !accountLast5) {
         resultDiv.innerText = "❌ 請完整填寫姓名、手機、地址與帳號末五碼";
         return;
       }
 
-      // 抓商品資訊
+      resultDiv.innerText = "⏳ 送出中，請稍候...";
+
+      // 讀取商品資訊
       const res2 = await fetch(`${GAS_URL}?action=products`);
       const products = await res2.json();
       const items = products.map(p => {
         const qty = parseInt(document.getElementById(`qty_${p.code}`).value);
-        return qty > 0 ? { name: p.name, price: p.price, qty } : null;
+        return qty > 0 ? { code: p.code, name: p.name, price: p.price, qty } : null;
       }).filter(i => i);
 
       if (!items.length) {
@@ -108,9 +112,10 @@
         method: "POST",
         body: JSON.stringify(payload)
       });
+
       const text = await result.text();
       if (text === "OK") {
-        resultDiv.innerText = "✅ 訂單已送出！";
+        resultDiv.innerText = "✅ 訂單已送出！感謝您的結緣。";
       } else {
         resultDiv.innerText = "❌ 發生錯誤，請稍後再試";
       }
