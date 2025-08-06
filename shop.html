@@ -44,7 +44,7 @@
     const profile = await liff.getProfile();
     userId = profile.userId;
 
-    const res = await fetch(`${GAS_URL}?userId=${userId}`);
+    const res = await fetch(`${GAS_URL}?action=member&userId=${userId}`);
     const data = await res.json();
     if (data.success) {
       document.getElementById("name").value = data.name || "";
