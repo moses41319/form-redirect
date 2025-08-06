@@ -21,6 +21,7 @@
     <label>手  機：<input id="phone" /></label><br />
     <label>地  址：<input id="address" /></label><br />
     <label>匯款帳號末五碼：<input id="accountLast5" /></label>
+    <label>隨喜功德金額（元）：<input id="donation" type="number" min="0" value="0" /></label>
   </div>
 
   <div id="products"></div>
@@ -33,105 +34,109 @@
   <div id="result" class="error"></div>
 
   <script>
-    const LIFF_ID = "2007867560-LKO28Gor"; // 你的 LIFF ID
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
-    let userId = "";
+  const LIFF_ID = "2007867560-LKO28Gor";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
+  let userId = "";
 
-    async function main() {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) liff.login();
-      const profile = await liff.getProfile();
-      userId = profile.userId;
+  async function main() {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) liff.login();
+    const profile = await liff.getProfile();
+    userId = profile.userId;
 
-      const res = await fetch(`${GAS_URL}?userId=${userId}`);
-      const data = await res.json();
-      if (data.success) {
-        document.getElementById("name").value = data.name || "";
-        document.getElementById("phone").value = data.phone || "";
-        document.getElementById("address").value = data.address || "";
-        document.getElementById("accountLast5").value = data.accountLast5 || ""; // ✅ 加這一行
-      }
-
-      const res2 = await fetch(`${GAS_URL}?action=products`);
-      const products = await res2.json();
-      const container = document.getElementById("products");
-      container.innerHTML = "<h2>請選擇結緣報名（每種限 1 件）：</h2>";
-      products.forEach(p => {
-        container.innerHTML += `
-          <div class="product">
-            <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br />
-            數量：
-            <select id="qty_${p.code}">
-              <option value="0">0</option>
-              <option value="1">1</option>
-            </select>
-          </div>`;
-      });
+    const res = await fetch(`${GAS_URL}?userId=${userId}`);
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById("name").value = data.name || "";
+      document.getElementById("phone").value = data.phone || "";
+      document.getElementById("address").value = data.address || "";
+      document.getElementById("accountLast5").value = data.accountLast5 || "";
     }
 
-    async function submitOrder() {
-      const name = document.getElementById("name").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const address = document.getElementById("address").value.trim();
-      const accountLast5 = document.getElementById("accountLast5").value.trim();
-      const resultDiv = document.getElementById("result");
-      const submitBtn = document.querySelector("button");
+    const res2 = await fetch(`${GAS_URL}?action=products`);
+    const products = await res2.json();
+    const container = document.getElementById("products");
+    container.innerHTML = "<h2>請選擇結緣報名（每種限 1 件）：</h2>";
+    products.forEach(p => {
+      container.innerHTML += `
+        <div class="product">
+          <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br />
+          數量：
+          <select id="qty_${p.code}">
+            <option value="0">0</option>
+            <option value="1">1</option>
+          </select>
+        </div>`;
+    });
+  }
 
-      if (!name || !phone || !address || !accountLast5) {
-        resultDiv.innerText = "❌ 請完整填寫所有欄位";
+  async function submitOrder() {
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const accountLast5 = document.getElementById("accountLast5").value.trim();
+    const donation = parseInt(document.getElementById("donation").value.trim()) || 0;
+    const resultDiv = document.getElementById("result");
+    const submitBtn = document.querySelector("button");
+
+    if (!name || !phone || !address || !accountLast5) {
+      resultDiv.innerText = "❌ 請完整填寫所有欄位";
+      return;
+    }
+
+    resultDiv.innerText = "⏳ 送出中，請稍候...";
+    submitBtn.disabled = true;
+
+    try {
+      const res2 = await fetch(`${GAS_URL}?action=products`);
+      const products = await res2.json();
+      const items = products.map(p => {
+        const qty = parseInt(document.getElementById(`qty_${p.code}`).value);
+        return qty > 0 ? { code: p.code, name: p.name, price: p.price, qty } : null;
+      }).filter(i => i);
+
+      if (!items.length && donation === 0) {
+        resultDiv.innerText = "❌ 請選擇至少一項結緣報名或輸入功德金額";
+        submitBtn.disabled = false;
         return;
       }
 
-      resultDiv.innerText = "⏳ 送出中，請稍候...";
-      submitBtn.disabled = true;
+      const totalItems = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+      const total = totalItems + donation;
 
-      try {
-        const res2 = await fetch(`${GAS_URL}?action=products`);
-        const products = await res2.json();
-        const items = products.map(p => {
-          const qty = parseInt(document.getElementById(`qty_${p.code}`).value);
-          return qty > 0 ? { code: p.code, name: p.name, price: p.price, qty } : null;
-        }).filter(i => i);
+      const payload = {
+        userId,
+        name,
+        phone,
+        address,
+        accountLast5,
+        items,
+        total
+      };
 
-        if (!items.length) {
-          resultDiv.innerText = "❌ 請選擇至少一項結緣報名";
-          submitBtn.disabled = false;
-          return;
-        }
+      const response = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
 
-        const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-        const payload = {
-          userId,
-          name,
-          phone,
-          address,
-          accountLast5,
-          items,
-          total
-        };
-
-        const response = await fetch(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-
-        const text = await response.text();
-        if (text.trim() === "OK") {
-          resultDiv.innerText = "✅ 已送出，即將跳轉...";
-          setTimeout(() => {
-            window.location.href = "thanks.html";
-          }, 1500);
-        } else {
-          resultDiv.innerText = "❌ 發生錯誤：" + text;
-          submitBtn.disabled = false;
-        }
-      } catch (error) {
-        resultDiv.innerText = "❌ 系統錯誤：" + error.message;
+      const text = await response.text();
+      if (text.trim() === "OK") {
+        resultDiv.innerText = "✅ 已送出，即將跳轉...";
+        setTimeout(() => {
+          window.location.href = "thanks.html";
+        }, 1500);
+      } else {
+        resultDiv.innerText = "❌ 發生錯誤：" + text;
         submitBtn.disabled = false;
       }
+    } catch (error) {
+      resultDiv.innerText = "❌ 系統錯誤：" + error.message;
+      submitBtn.disabled = false;
     }
+  }
 
-    main();
-  </script>
+  main();
+</script>
+
 </body>
 </html>
