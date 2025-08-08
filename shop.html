@@ -58,16 +58,20 @@
     const container = document.getElementById("products");
     container.innerHTML = "<h2>請選擇結緣報名（每種限 1 件）：</h2>";
     products.forEach(p => {
-      container.innerHTML += `
-        <div class="product">
-          <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}）<br />
-          數量：
-          <select id="qty_${p.code}">
-            <option value="0">0</option>
-            <option value="1">1</option>
-          </select>
-        </div>`;
-    });
+  const max = Math.min(parseInt(p.limit || 1), parseInt(p.stock || 0));
+  if (max < 1) return; // 如果限購或庫存為 0 就不顯示
+
+  let options = '';
+  for (let i = 0; i <= max; i++) {
+    options += `<option value="${i}">${i}</option>`;
+  }
+
+  container.innerHTML += `
+    <div class="product">
+      <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}，限購：${p.limit}）<br />
+      數量：<select id="qty_${p.code}">${options}</select>
+    </div>`;
+});
   }
 
   async function submitOrder() {
