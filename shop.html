@@ -42,7 +42,7 @@
     await liff.init({ liffId: LIFF_ID });
     if (!liff.isLoggedIn()) liff.login();
     const profile = await liff.getProfile();
-    userId = profile.userId;
+    userId = (profile.userId || "").toString();
 
     const res = await fetch(`${GAS_URL}?action=member&userId=${userId}`);
     const data = await res.json();
@@ -56,7 +56,7 @@
     const res2 = await fetch(`${GAS_URL}`);
     const products = await res2.json();
     const container = document.getElementById("products");
-    container.innerHTML = "<h2>請選擇結緣報名（每種限 1 件）：</h2>";
+    container.innerHTML = "<h2>請選擇結緣報名：</h2>";
     products.forEach(p => {
   const max = Math.min(parseInt(p.limit || 1), parseInt(p.stock || 0));
   if (max < 1) return; // 如果限購或庫存為 0 就不顯示
