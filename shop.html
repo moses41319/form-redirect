@@ -56,8 +56,7 @@
     const res2 = await fetch(`${GAS_URL}`);
     const products = await res2.json();
     const container = document.getElementById("products");
-    container.innerHTML = "<h2>請選擇結緣報名：</h2>"<br />
-    <label>0元代表隨喜，請由上方填入隨喜金額</label><br />;
+    container.innerHTML = "<h2>請選擇結緣報名：</h2><br /><label>0元代表隨喜，請由上方填入隨喜金額</label><br />";
     products.forEach(p => {
   const max = Math.min(parseInt(p.limit || 1), parseInt(p.stock || 0));
   if (max < 1) return; // 如果限購或庫存為 0 就不顯示
