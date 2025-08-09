@@ -21,7 +21,7 @@
     <label>手  機：<input id="phone" /></label><br />
     <label>地  址：<input id="address" /></label><br />
     <label>匯款帳號末五碼：<input id="accountLast5" /></label>
-    <label>隨喜功德金額（元）：<input id="donation" type="number" min="0" value="0" /></label>
+    <label>隨喜金額（元）：<input id="donation" type="number" min="0" value="0" /></label>
   </div>
 
   <div id="products"></div>
@@ -111,7 +111,7 @@
 
     // ✅ 商品未選且無功德金 → 提示錯誤
     if (!items.length && donation === 0) {
-      resultDiv.innerText = "❌ 請選擇至少一項結緣報名或輸入功德金額";
+      resultDiv.innerText = "❌ 請選擇至少一項結緣報名或輸入隨喜金額";
       submitBtn.disabled = false;
       return;
     }
