@@ -1,180 +1,3 @@
-跳至內容
-聊天歷程紀錄
-
-你說：
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>結緣報名表單</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 2em; }
-    h1 { font-size: 2em; }
-    input, select { font-size: 1em; padding: 0.5em; width: 100%; margin: 0.5em 0; }
-    .product { border-top: 1px solid #ccc; padding-top: 1em; margin-top: 1em; }
-    button { font-size: 1.2em; padding: 0.6em 1em; margin-top: 1em; }
-    .error { color: red; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <h1>結緣報名表單</h1>
-  <div>
-    <label>資料讀取中...請稍後10秒</label><br /><br />
-    <label>姓  名：<input id="name" /></label><br />
-    <label>手  機：<input id="phone" /></label><br />
-    <label>地  址：<input id="address" /></label><br />
-    <label>匯款帳號末五碼：<input id="accountLast5" /></label>
-    <label>隨喜金額（元）：<input id="donation" type="number" min="0" value="0" /></label>
-  </div>
-
-  <div id="products"></div>
-
-  <div>
-    
-  </div>
-
-  <button onclick="submitOrder()">🛍️ 送 出</button>
-  <div id="result" class="error"></div>
-
-  <script>
-  const LIFF_ID = "2007867560-LKO28Gor";
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
-  let userId = "";
-
-  async function main() {
-    await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) liff.login();
-    const profile = await liff.getProfile();
-    userId = (profile.userId || "").toString();
-
-    const res = await fetch(${GAS_URL}?action=member&userId=${userId});
-    const data = await res.json();
-    if (data.success) {
-      document.getElementById("name").value = data.name || "";
-      document.getElementById("phone").value = data.phone || "";
-      document.getElementById("address").value = data.address || "";
-      document.getElementById("accountLast5").value = data.accountLast5 || "";
-    }
-
-    const res2 = await fetch(${GAS_URL});
-    const products = await res2.json();
-    const container = document.getElementById("products");
-    container.innerHTML = "<h2>請選擇結緣報名：</h2><br /><label>0元代表隨喜，請由上方填入隨喜金額</label><br />";
-    products.forEach(p => {
-  const max = Math.min(parseInt(p.limit || 1), parseInt(p.stock || 0));
-  if (max < 1) return; // 如果限購或庫存為 0 就不顯示
-
-  let options = '';
-  for (let i = 0; i <= max; i++) {
-    options += <option value="${i}">${i}</option>;
-  }
-
-  container.innerHTML += 
-    <div class="product">
-      <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}，限購：${p.limit}）<br />
-      數量：<select id="qty_${p.code}">${options}</select>
-    </div>;
-});
-  }
-
-  async function submitOrder() {
-  const name = document.getElementById("name").value.trim();
-  const phone = document.getElementById("phone").value.trim();
-  const address = document.getElementById("address").value.trim();
-  const accountLast5 = document.getElementById("accountLast5").value.trim();
-  const donation = parseInt(document.getElementById("donation").value.trim()) || 0;
-  const resultDiv = document.getElementById("result");
-  const submitBtn = document.querySelector("button");
-
-  if (!name || !phone || !address || !accountLast5) {
-    resultDiv.innerText = "❌ 請完整填寫所有欄位";
-    return;
-  }
-
-  resultDiv.innerText = "⏳ 送出中，請稍候...";
-  submitBtn.disabled = true;
-
-  try {
-    const res2 = await fetch(${GAS_URL});
-    const products = await res2.json();
-
-    if (!Array.isArray(products)) {
-      resultDiv.innerText = "❌ 商品資料載入失敗，請稍後再試";
-      submitBtn.disabled = false;
-      return;
-    }
-
-    // ✅ 商品選擇 + 防止 DOM 為 null
-    const items = products.map(p => {
-      const el = document.getElementById(qty_${p.code});
-      if (!el) return null;
-      const qty = parseInt(el.value);
-      return qty > 0 ? { code: p.code, name: p.name, price: p.price, qty } : null;
-    }).filter(i => i);
-
-    // ✅ 商品未選且無功德金 → 提示錯誤
-    if (!items.length && donation === 0) {
-      resultDiv.innerText = "❌ 請選擇至少一項結緣報名或輸入隨喜金額";
-      submitBtn.disabled = false;
-      return;
-    }
-
-    const totalItems = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-    const total = totalItems + donation;
-
-    const payload = {
-      userId,
-      name,
-      phone,
-      address,
-      accountLast5,
-      items,
-      total,
-      donation
-    };
-
-    const response = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-
-    const text = await response.text();
-    if (text.trim() === "OK") {
-      resultDiv.innerText = "✅ 已送出，即將跳轉...";
-      setTimeout(() => {
-        window.location.href = "thanks.html";
-      }, 1500);
-    } else {
-      resultDiv.innerText = "❌ 發生錯誤：" + text;
-      submitBtn.disabled = false;
-    }
-  } catch (error) {
-    resultDiv.innerText = "❌ 系統錯誤：" + error.message;
-    submitBtn.disabled = false;
-  }
-}
-
-  main();
-</script>
-
-</body>
-</html>
-
-
-
-改成每次只能選訂一樣商品
-ChatGPT 說：
-
-已思考 12s
-下面是「一次只能選一樣商品」的完整版本（可直接整份覆蓋你原本的 HTML）。改動重點：
-
-商品改為 單選 radio。
-
-只會啟用被選中的那個商品的數量選單（其他自動清零並停用）。
-
-送出時只會帶出 最多一個商品；也支援只填隨喜金額不選商品。
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -233,11 +56,10 @@ ChatGPT 說：
         document.getElementById("accountLast5").value = data.accountLast5 || "";
       }
     } catch (e) {
-      // 會員資料讀取失敗不阻斷流程
       console.warn("member fetch error:", e);
     }
 
-    // 讀取商品並渲染（單選）
+    // 讀取商品並渲染（單選，且必選）
     try {
       const res2 = await fetch(`${GAS_URL}`);
       const products = await res2.json();
@@ -245,21 +67,25 @@ ChatGPT 說：
       renderProducts(cachedProducts);
     } catch (e) {
       document.getElementById("products").innerHTML = `<div class="error">❌ 商品資料載入失敗，請稍後再試</div>`;
+      document.getElementById("submitBtn").disabled = true;
     }
   }
 
   function renderProducts(products) {
     const container = document.getElementById("products");
     container.innerHTML = `
-      <h2>請選擇結緣報名（每次僅能擇一）</h2>
-      <div class="hint">0元代表隨喜，可不選商品僅填上方隨喜金額；若選商品，僅能選擇其中一樣。</div>
+      <h2>請選擇結緣報名（每次僅能擇一，<b>必選</b>）</h2>
+      <div class="hint">可加填上方隨喜金額；但仍需選擇一樣商品，數量至少 1。</div>
     `;
 
-    products.forEach((p, idx) => {
+    let hasRenderable = false;
+
+    products.forEach((p) => {
       const max = Math.min(parseInt(p.limit || 1, 10), parseInt(p.stock || 0, 10));
       if (max < 1) return; // 庫存或限購為 0 就不顯示
+      hasRenderable = true;
 
-      // 數量選項：0..max
+      // 數量選項：0..max（預設禁用，選到商品時預設改為 1）
       let options = '';
       for (let i = 0; i <= max; i++) {
         options += `<option value="${i}">${i}</option>`;
@@ -270,129 +96,4 @@ ChatGPT 說：
       const qtyId = `qty_${code}`;
 
       container.innerHTML += `
-        <div class="product">
-          <div class="product-row">
-            <input type="radio" name="product" id="${radioId}" value="${code}" data-price="${p.price}" data-stock="${p.stock}" data-limit="${p.limit}">
-            <label for="${radioId}">
-              <strong>${p.name}</strong>（${p.price}元，剩餘：${p.stock}，限購：${p.limit}）
-            </label>
-            <label>數量：
-              <select class="qty" id="${qtyId}" disabled>${options}</select>
-            </label>
-          </div>
-        </div>
-      `;
-    });
-
-    // 綁定互斥事件：選中某商品 → 啟用其數量(預設為1)，其他清零且停用
-    const radios = Array.from(document.querySelectorAll('input[name="product"]'));
-    radios.forEach(r => {
-      r.addEventListener('change', () => {
-        const selectedCode = r.value;
-        radios.forEach(other => {
-          const code = other.value;
-          const qtyEl = document.getElementById(`qty_${code}`);
-          if (other.checked) {
-            qtyEl.disabled = false;
-            if (qtyEl.value === "0") qtyEl.value = "1"; // 預設選中商品數量為 1
-          } else {
-            qtyEl.value = "0";
-            qtyEl.disabled = true;
-          }
-        });
-      });
-    });
-  }
-
-  async function submitOrder() {
-    const name = document.getElementById("name").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const address = document.getElementById("address").value.trim();
-    const accountLast5 = document.getElementById("accountLast5").value.trim();
-    const donation = parseInt((document.getElementById("donation").value || "0").trim(), 10) || 0;
-    const resultDiv = document.getElementById("result");
-    const submitBtn = document.getElementById("submitBtn");
-
-    if (!name || !phone || !address || !accountLast5) {
-      resultDiv.innerText = "❌ 請完整填寫所有欄位";
-      return;
-    }
-
-    resultDiv.innerText = "⏳ 送出中，請稍候...";
-    submitBtn.disabled = true;
-
-    try {
-      // 取得被選中的商品
-      const selectedRadio = document.querySelector('input[name="product"]:checked');
-
-      let items = [];
-      if (selectedRadio) {
-        const code = selectedRadio.value;
-        const qtyEl = document.getElementById(`qty_${code}`);
-        const qty = parseInt(qtyEl.value, 10) || 0;
-
-        // 找到商品資料
-        const p = cachedProducts.find(x => String(x.code) === String(code));
-        if (p && qty > 0) {
-          items = [{ code: p.code, name: p.name, price: parseInt(p.price, 10) || 0, qty }];
-        }
-      }
-
-      // 若沒有選商品且隨喜金額為 0 → 不允許
-      if (!items.length && donation === 0) {
-        resultDiv.innerText = "❌ 請選擇一樣結緣報名或輸入隨喜金額";
-        submitBtn.disabled = false;
-        return;
-      }
-
-      // 僅允許最多一樣商品（保險檢查）
-      if (items.length > 1) {
-        resultDiv.innerText = "❌ 每次僅能選擇一樣商品";
-        submitBtn.disabled = false;
-        return;
-      }
-
-      const totalItems = items.reduce((sum, i) => sum + (i.price * i.qty), 0);
-      const total = totalItems + donation;
-
-      const payload = {
-        userId,
-        name,
-        phone,
-        address,
-        accountLast5,
-        items,
-        total,
-        donation
-      };
-
-      const response = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-
-      const text = await response.text();
-      if (text.trim() === "OK") {
-        resultDiv.innerText = "✅ 已送出，即將跳轉...";
-        setTimeout(() => {
-          window.location.href = "thanks.html";
-        }, 1500);
-      } else {
-        resultDiv.innerText = "❌ 發生錯誤：" + text;
-        submitBtn.disabled = false;
-      }
-    } catch (error) {
-      resultDiv.innerText = "❌ 系統錯誤：" + error.message;
-      submitBtn.disabled = false;
-    }
-  }
-
-  main();
-  </script>
-</body>
-</html>
-
-
-
-未選擇任何檔案未選擇任何檔案
-ChatGPT 可能會出錯。請查核重要資訊。
+        <div c
