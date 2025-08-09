@@ -37,7 +37,7 @@
   <div id="result" class="error"></div>
 
   <script>
-  // === 設定（依你提供的資訊） ===
+  // === 設定 ===
   const LIFF_ID = "2007867560-aMNQj3e2";
   const GAS_URL = "https://script.google.com/macros/s/AKfycbx1BY73Mot0RqLcZif3of3HLnskcbDCcUweQTj7j3yra-Dkz9E-8CSFbVR-qBVd6eDD/exec";
 
@@ -46,32 +46,26 @@
   let cachedProducts = [];
   let submitting = false;
 
-  // === 入口 ===
   document.getElementById("submitBtn").addEventListener("click", submitOrder);
   main();
 
   async function main() {
     try {
       await liff.init({ liffId: LIFF_ID });
-      await liff.ready; // 確保 LIFF 初始化完成
+      await liff.ready;
 
-      // 建議在 LINE 內開啟（若你允許外部瀏覽器，就移除此段）
       if (!liff.isInClient() && !liff.isLoggedIn()) {
-        // 只提醒，不阻擋
         alert("建議在 LINE App 內開啟此頁，以確保功能正常。");
       }
-
-      // 首次登入：指定 redirectUri 並立刻 return，避免後續程式繼續跑
       if (!liff.isLoggedIn()) {
         liff.login({ redirectUri: window.location.href });
         return;
       }
 
-      // 取得使用者資料
       const profile = await liff.getProfile();
       userId = String(profile.userId || "");
 
-      // 讀取會員資料（加上 cache buster + 關閉快取）
+      // 會員資料
       try {
         const res = await fetch(`${GAS_URL}?action=member&userId=${encodeURIComponent(userId)}&t=${Date.now()}`, { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
@@ -85,7 +79,7 @@
         console.warn("會員資料讀取失敗：", e);
       }
 
-      // 讀取商品（必選，單選；加上 cache buster）
+      // 商品資料
       const res2 = await fetch(`${GAS_URL}?t=${Date.now()}`, { cache: "no-store" });
       const products = await res2.json();
       cachedProducts = Array.isArray(products) ? products : [];
@@ -94,7 +88,6 @@
     } catch (e) {
       console.error(e);
       setError("❌ LIFF 初始化失敗：" + (e && e.message ? e.message : e));
-      // 若 LIFF 失敗，避免使用者誤送
       document.getElementById("submitBtn").disabled = true;
     }
   }
@@ -102,21 +95,19 @@
   function renderProducts(products) {
     const container = document.getElementById("products");
     container.innerHTML = `
-      <h2>請選擇結緣報名</h2>
-      <div class="hint">0元代表隨喜，請於上方填入隨喜金額。</div>
+      <h2>請選擇結緣報名（每次僅能擇一，<b>必選</b>）</h2>
+      <div class="hint">可另外填上方隨喜金額；但仍需選擇一樣商品，且數量至少 1。</div>
     `;
 
     let hasRenderable = false;
 
     products.forEach((p) => {
       const max = Math.min(parseInt(p.limit || 1, 10), parseInt(p.stock || 0, 10));
-      if (max < 1) return; // 無可選
+      if (max < 1) return;
       hasRenderable = true;
 
       let options = "";
-      for (let i = 0; i <= max; i++) {
-        options += `<option value="${i}">${i}</option>`;
-      }
+      for (let i = 0; i <= max; i++) options += `<option value="${i}">${i}</option>`;
 
       const code = String(p.code);
       const radioId = `radio_${code}`;
@@ -143,7 +134,7 @@
       return;
     }
 
-    // 單選互斥邏輯：選中某商品 → 啟用其數量(預設為1)，其他清零且停用
+    // 單選互斥
     const radios = Array.from(document.querySelectorAll('input[name="product"]'));
     radios.forEach(r => {
       r.addEventListener("change", () => {
@@ -152,7 +143,7 @@
           const qtyEl = document.getElementById(`qty_${code}`);
           if (other.checked) {
             qtyEl.disabled = false;
-            if (qtyEl.value === "0") qtyEl.value = "1"; // 預設選中商品數量為 1
+            if (qtyEl.value === "0") qtyEl.value = "1";
           } else {
             qtyEl.value = "0";
             qtyEl.disabled = true;
@@ -174,48 +165,27 @@
     const accountLast5 = document.getElementById("accountLast5").value.trim();
     const donation = parseInt((document.getElementById("donation").value || "0").trim(), 10) || 0;
 
-    // 基本欄位
     if (!name || !phone || !address || !accountLast5) {
       return setError("❌ 請完整填寫所有欄位");
     }
 
-    // 必選商品 + 數量至少 1
     const selectedRadio = document.querySelector('input[name="product"]:checked');
-    if (!selectedRadio) {
-      return setError("❌ 請選擇一樣結緣商品");
-    }
+    if (!selectedRadio) return setError("❌ 請選擇一樣結緣商品");
+
     const code = selectedRadio.value;
     const qtyEl = document.getElementById(`qty_${code}`);
     const qty = parseInt(qtyEl.value, 10) || 0;
-    if (qty < 1) {
-      return setError("❌ 請將所選商品的數量設為至少 1");
-    }
+    if (qty < 1) return setError("❌ 請將所選商品的數量設為至少 1");
 
-    // 找到商品資料
     const p = cachedProducts.find(x => String(x.code) === String(code));
-    if (!p) {
-      return setError("❌ 商品資料異常，請重整頁面再試");
-    }
+    if (!p) return setError("❌ 商品資料異常，請重整頁面再試");
 
-    const item = {
-      code: p.code,
-      name: p.name,
-      price: parseInt(p.price, 10) || 0,
-      qty
-    };
-
-    const totalItems = item.price * item.qty;
-    const total = totalItems + donation;
+    const item = { code: p.code, name: p.name, price: parseInt(p.price, 10) || 0, qty };
+    const total = item.price * item.qty + donation;
 
     const payload = {
-      userId,
-      name,
-      phone,
-      address,
-      accountLast5,
-      items: [item],  // ✅ 僅一樣商品
-      total,
-      donation
+      userId, name, phone, address, accountLast5,
+      items: [item], total, donation
     };
 
     try {
@@ -223,18 +193,18 @@
       submitBtn.disabled = true;
       resultDiv.innerText = "⏳ 送出中，請稍候...";
 
+      // ⭐ 關鍵修正：改用 text/plain 避免手機端預檢（OPTIONS）被擋
       const response = await fetch(GAS_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // ✅ 明確宣告，手機端較穩
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload)
       });
 
       const text = await response.text();
       if (text.trim() === "OK") {
         resultDiv.innerText = "✅ 已送出，即將跳轉...";
-        setTimeout(() => {
-          window.location.href = "thanks.html";
-        }, 1500);
+        setTimeout(() => { window.location.href = "thanks.html"; }, 1500);
       } else {
         setError("❌ 發生錯誤：" + text);
         submitBtn.disabled = false;
