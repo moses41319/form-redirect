@@ -1,9 +1,94 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="zh-Hant">
 <head>
-  <meta http-equiv="refresh" content="0; url=shop.html">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>點燈報名（LINE 登入中）</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; margin: 0; padding: 24px; }
+    .card { max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; }
+    .title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .desc { color: #374151; line-height: 1.6; margin-bottom: 14px; }
+    .small { color: #6b7280; font-size: 12px; line-height: 1.5; }
+    .btn { display:inline-block; margin-top: 12px; padding: 10px 14px; border-radius: 12px; border: 0; background:#111827; color:#fff; cursor:pointer; }
+    .btn:active { transform: translateY(1px); }
+    code { background:#f3f4f6; padding:2px 6px; border-radius:8px; }
+  </style>
 </head>
+
 <body>
-  <p>Redirecting to shop...</p>
+  <div class="card">
+    <div class="title">點燈報名｜LINE 登入處理中…</div>
+    <div class="desc" id="status">正在初始化 LIFF，請稍候。</div>
+
+    <div class="small">
+      若長時間沒有跳轉，請確認：<br/>
+      1) 你是從 LINE 內開啟本頁（LIFF）<br/>
+      2) 表單裡有 LINE_USER_ID 那題且 entry 設定正確<br/>
+    </div>
+
+    <button class="btn" id="retryBtn" style="display:none;">再試一次</button>
+  </div>
+
+<script>
+  // ✅ 這裡已經自動幫你填好
+  const LIFF_ID = "2007867560-ElN1bVyv";
+  const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdHluYaDMMiEr1uXH3uNHmHEs9ssUSSUhxa4Wd2C-hoOisQlw/viewform";
+  
+  // ✅ 你這個表單的 LINE_USER_ID entry 編號
+  const ENTRY_LINE_USER_ID = "1944845056";
+
+  const statusEl = document.getElementById("status");
+  const retryBtn = document.getElementById("retryBtn");
+
+  function showError(msg) {
+    statusEl.textContent = "⚠️ " + msg;
+    retryBtn.style.display = "inline-block";
+  }
+
+  retryBtn.addEventListener("click", () => {
+    retryBtn.style.display = "none";
+    statusEl.textContent = "重新嘗試中…";
+    main();
+  });
+
+  function buildFormUrlWithPrefill(userId) {
+    const u = new URL(FORM_URL);
+    u.searchParams.set(`entry.${ENTRY_LINE_USER_ID}`, userId);
+    return u.toString();
+  }
+
+  async function main() {
+    try {
+      statusEl.textContent = "正在初始化 LIFF…";
+      await liff.init({ liffId: LIFF_ID });
+
+      if (!liff.isLoggedIn()) {
+        statusEl.textContent = "尚未登入 LINE，正在導向登入…";
+        liff.login();
+        return;
+      }
+
+      statusEl.textContent = "已登入，取得 userId 中…";
+      const profile = await liff.getProfile();
+      const userId = profile && profile.userId ? profile.userId : "";
+
+      if (!userId) {
+        showError("取得 userId 失敗，請確認 LIFF 設定與權限。");
+        return;
+      }
+
+      statusEl.textContent = "取得完成，正在跳轉到報名表…";
+      window.location.replace(buildFormUrlWithPrefill(userId));
+
+    } catch (err) {
+      console.error(err);
+      showError("初始化失敗：" + (err && err.message ? err.message : String(err)));
+    }
+  }
+
+  main();
+</script>
 </body>
 </html>
