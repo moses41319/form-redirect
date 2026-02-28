@@ -3,44 +3,87 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>繞境報名（LINE 登入中）</title>
+  <title>繞境報名｜LINE 登入中</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    body { font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; margin: 0; padding: 24px; }
-    .card { max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; }
-    .title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .desc { color: #374151; line-height: 1.6; margin-bottom: 14px; }
-    .small { color: #6b7280; font-size: 12px; line-height: 1.5; }
-    .btn { display:inline-block; margin-top: 12px; padding: 10px 14px; border-radius: 12px; border: 0; background:#111827; color:#fff; cursor:pointer; }
+    body {
+      font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f9fafb;
+    }
+    .card {
+      max-width: 560px;
+      margin: 0 auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 24px;
+      background: #ffffff;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #111827;
+    }
+    .desc {
+      color: #374151;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+    .small {
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .btn {
+      display:inline-block;
+      margin-top: 18px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 0;
+      background:#111827;
+      color:#fff;
+      cursor:pointer;
+      font-size: 14px;
+    }
     .btn:active { transform: translateY(1px); }
-    code { background:#f3f4f6; padding:2px 6px; border-radius:8px; }
+    code {
+      background:#f3f4f6;
+      padding:2px 6px;
+      border-radius:8px;
+    }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <div class="title">繞境報名｜LINE 登入處理中…</div>
-    <div class="desc" id="status">正在初始化 LIFF，請稍候。</div>
+    <div class="title">丙午年繞境祈福｜報名系統</div>
+    <div class="desc" id="status">正在初始化 LINE 登入，請稍候…</div>
 
     <div class="small">
       若長時間沒有跳轉，請確認：<br/>
-      1) 你是從 LINE 內開啟本頁（LIFF）<br/>
-      2) 你已加官方帳號好友（才能 push 回覆）<br/>
-      3) 表單裡有 <code>LINE_USER_ID【以下請勿更動】</code> 且 entry 設定正確<br/>
+      1️⃣ 請從 LINE 內開啟此頁面（LIFF）<br/>
+      2️⃣ 已加入官方帳號好友（才能回傳通知）<br/>
+      3️⃣ 表單內含 <code>LINE_USER_ID【以下請勿更動】</code> 欄位
     </div>
 
-    <button class="btn" id="retryBtn" style="display:none;">再試一次</button>
+    <button class="btn" id="retryBtn" style="display:none;">重新嘗試</button>
   </div>
 
 <script>
-  // ✅ 你原本點燈轉址使用的 LIFF（可以沿用）
+  /** ========= 設定區 ========= */
+  // 你目前使用的 LIFF ID（沿用原本）
   const LIFF_ID = "2007867560-ElN1bVyv";
 
-  // ✅ 繞境報名表（正式 viewform）
-  const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScSb1smv2Rygf6muOpVqYiLj5ndjItYkdVwdrwqXgpVVsShvw/viewform";
+  // 繞境報名表（正式 viewform）
+  const FORM_URL =
+    "https://docs.google.com/forms/d/e/1FAIpQLScSb1smv2Rygf6muOpVqYiLj5ndjItYkdVwdrwqXgpVVsShvw/viewform";
 
-  // ✅ LINE_USER_ID【以下請勿更動】對應的 entry
-  const ENTRY_LINE_USER_ID = "2137575087"; // 注意：這裡只放數字，等下會組成 entry.2137575087
+  // LINE_USER_ID【以下請勿更動】對應 entry
+  const ENTRY_LINE_USER_ID = "2137575087";
+  /** ========================== */
 
   const statusEl = document.getElementById("status");
   const retryBtn = document.getElementById("retryBtn");
@@ -52,39 +95,40 @@
 
   retryBtn.addEventListener("click", () => {
     retryBtn.style.display = "none";
-    statusEl.textContent = "重新嘗試中…";
+    statusEl.textContent = "重新初始化中…";
     main();
   });
 
-  function buildFormUrlWithPrefill(userId) {
-    const u = new URL(FORM_URL);
-    u.searchParams.set("usp", "pp_url");
-    u.searchParams.set(`entry.${ENTRY_LINE_USER_ID}`, userId);
-    return u.toString();
+  function buildPrefillUrl(userId) {
+    const url = new URL(FORM_URL);
+    url.searchParams.set("usp", "pp_url");
+    url.searchParams.set(`entry.${ENTRY_LINE_USER_ID}`, userId);
+    return url.toString();
   }
 
   async function main() {
     try {
-      statusEl.textContent = "正在初始化 LIFF…";
+      statusEl.textContent = "正在初始化 LINE LIFF…";
       await liff.init({ liffId: LIFF_ID });
 
       if (!liff.isLoggedIn()) {
-        statusEl.textContent = "尚未登入 LINE，正在導向登入…";
+        statusEl.textContent = "尚未登入 LINE，導向登入中…";
         liff.login({ redirectUri: window.location.href });
         return;
       }
 
-      statusEl.textContent = "已登入，取得 userId 中…";
+      statusEl.textContent = "登入成功，取得 LINE 使用者資訊…";
       const profile = await liff.getProfile();
       const userId = profile && profile.userId ? profile.userId : "";
 
       if (!userId) {
-        showError("取得 userId 失敗，請確認 LIFF 設定與權限。");
+        showError("取得 LINE userId 失敗，請確認 LIFF 權限設定。");
         return;
       }
 
-      statusEl.textContent = "取得完成，正在跳轉到繞境報名表…";
-      window.location.replace(buildFormUrlWithPrefill(userId));
+      statusEl.textContent = "取得完成，正在跳轉繞境報名表…";
+      const targetUrl = buildPrefillUrl(userId);
+      window.location.replace(targetUrl);
 
     } catch (err) {
       console.error(err);
