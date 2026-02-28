@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>點燈報名（LINE 登入中）</title>
+  <title>繞境報名（LINE 登入中）</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body { font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", sans-serif; margin: 0; padding: 24px; }
@@ -19,25 +19,28 @@
 
 <body>
   <div class="card">
-    <div class="title">點燈報名｜LINE 登入處理中…</div>
+    <div class="title">繞境報名｜LINE 登入處理中…</div>
     <div class="desc" id="status">正在初始化 LIFF，請稍候。</div>
 
     <div class="small">
       若長時間沒有跳轉，請確認：<br/>
       1) 你是從 LINE 內開啟本頁（LIFF）<br/>
-      2) 表單裡有 LINE_USER_ID 那題且 entry 設定正確<br/>
+      2) 你已加官方帳號好友（才能 push 回覆）<br/>
+      3) 表單裡有 <code>LINE_USER_ID【以下請勿更動】</code> 且 entry 設定正確<br/>
     </div>
 
     <button class="btn" id="retryBtn" style="display:none;">再試一次</button>
   </div>
 
 <script>
-  // ✅ 這裡已經自動幫你填好
+  // ✅ 你原本點燈轉址使用的 LIFF（可以沿用）
   const LIFF_ID = "2007867560-ElN1bVyv";
-  const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdHluYaDMMiEr1uXH3uNHmHEs9ssUSSUhxa4Wd2C-hoOisQlw/viewform";
-  
-  // ✅ 你這個表單的 LINE_USER_ID entry 編號
-  const ENTRY_LINE_USER_ID = "1944845056";
+
+  // ✅ 繞境報名表（正式 viewform）
+  const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScSb1smv2Rygf6muOpVqYiLj5ndjItYkdVwdrwqXgpVVsShvw/viewform";
+
+  // ✅ LINE_USER_ID【以下請勿更動】對應的 entry
+  const ENTRY_LINE_USER_ID = "2137575087"; // 注意：這裡只放數字，等下會組成 entry.2137575087
 
   const statusEl = document.getElementById("status");
   const retryBtn = document.getElementById("retryBtn");
@@ -55,6 +58,7 @@
 
   function buildFormUrlWithPrefill(userId) {
     const u = new URL(FORM_URL);
+    u.searchParams.set("usp", "pp_url");
     u.searchParams.set(`entry.${ENTRY_LINE_USER_ID}`, userId);
     return u.toString();
   }
@@ -66,7 +70,7 @@
 
       if (!liff.isLoggedIn()) {
         statusEl.textContent = "尚未登入 LINE，正在導向登入…";
-        liff.login();
+        liff.login({ redirectUri: window.location.href });
         return;
       }
 
@@ -79,7 +83,7 @@
         return;
       }
 
-      statusEl.textContent = "取得完成，正在跳轉到報名表…";
+      statusEl.textContent = "取得完成，正在跳轉到繞境報名表…";
       window.location.replace(buildFormUrlWithPrefill(userId));
 
     } catch (err) {
